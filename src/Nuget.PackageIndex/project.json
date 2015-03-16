@@ -1,0 +1,19 @@
+{
+    "version": "1.0.0-*",
+    "dependencies": {
+        "Lucene.Net": "3.0.3",
+        "Mono.Cecil": "0.9.5.4",
+        "Nuget.Core": "2.8.3-alpha0001",
+        "Microsoft.CodeAnalysis": "1.0.0.0-rc1",
+        "System.Collections.Immutable": "1.1.33-beta",
+        "System.Runtime": "4.0.20.0-beta-22605",
+        "System.Threading.Tasks": "4.0.10.0-beta-22605"
+    },
+
+    "frameworks": {
+        "aspnet50": {
+            "dependencies": {
+            }
+        }
+    }
+}
