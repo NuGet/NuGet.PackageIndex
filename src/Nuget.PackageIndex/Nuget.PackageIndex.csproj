@@ -150,16 +150,25 @@
     <Compile Include="Engine\IPackageSearchEngine.cs" />
     <Compile Include="Engine\PackageIndexError.cs" />
     <Compile Include="Engine\PackageSearchEngine.cs" />
+    <Compile Include="LocalPackageIndexBuilderResult.cs" />
+    <Compile Include="LocalPackageIndexBuilder.cs" />
+    <Compile Include="Logging\ILogProvider.cs" />
+    <Compile Include="Logging\LogFactory.cs" />
+    <Compile Include="Logging\LogLevel.cs" />
+    <Compile Include="PackageIndexFactory.cs" />
+    <Compile Include="IPackageIndexFactory.cs" />
+    <Compile Include="IRemotePackageIndex.cs" />
+    <Compile Include="ILocalPackageIndex.cs" />
     <Compile Include="PackageSearcher.cs" />
     <Compile Include="IPackageSearcher.cs" />
     <Compile Include="IPackageIndex.cs" />
     <Compile Include="LocalPackageIndex.cs" />
-    <Compile Include="Logging\ILogger.cs" />
+    <Compile Include="Logging\ILog.cs" />
     <Compile Include="Logging\NullLogger.cs" />
     <Compile Include="Models\IPackageIndexModel.cs" />
     <Compile Include="Models\PackageModel.cs" />
     <Compile Include="Models\TypeModel.cs" />
-    <Compile Include="PackageIndexBase.cs" />
+    <Compile Include="LocalPackageIndexBase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -23,11 +23,11 @@ namespace Nuget.PackageIndex.Engine
         private static readonly object _writerLock = new object();
         private bool _disposed;
 
-        private readonly ILogger _logger;
+        private readonly ILog _logger;
         private readonly LuceneDirectory _directory;
         private readonly Analyzer _analyzer;
 
-        public PackageSearchEngine(LuceneDirectory directory, Analyzer analyzer, ILogger logger, bool readOnly = false)
+        public PackageSearchEngine(LuceneDirectory directory, Analyzer analyzer, ILog logger, bool readOnly = false)
         {
             _logger = logger;
             _directory = directory;

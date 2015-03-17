@@ -8,10 +8,9 @@ using Lucene.Net.Search;
 using Lucene.Net.Index;
 using Mono.Cecil;
 using LuceneDirectory = Lucene.Net.Store.Directory;
-using ILogger=Nuget.PackageIndex.Logging.ILogger;
-using NullLogger= Nuget.PackageIndex.Logging.NullLogger;
 using Nuget.PackageIndex.Engine;
 using Nuget.PackageIndex.Models;
+using Nuget.PackageIndex.Logging;
 
 namespace Nuget.PackageIndex
 {
@@ -19,15 +18,14 @@ namespace Nuget.PackageIndex
     /// Base class representing a package index, should be overriden with concrete index 
     /// implementation (local, remote etc)
     /// </summary>
-    public abstract class PackageIndexBase : IPackageIndex, IDisposable
+    public abstract class LocalPackageIndexBase : ILocalPackageIndex, IDisposable
     {
         protected const int MaxTypesExpected = 5;
         private static readonly object _directoryLock = new object();
         private bool _disposed;
 
-
-        private ILogger _logger;
-        protected ILogger Logger {
+        private ILog _logger;
+        protected ILog Logger {
             get
             {
                 if (_logger == null)
@@ -35,7 +33,7 @@ namespace Nuget.PackageIndex
                     // if no logger specified - just create silent default logger
                     //var factory = new LoggerFactory();
                     //_logger = factory.Create(typeof(LocalPackageIndex).FullName);
-                    _logger = new NullLogger();
+                    _logger = new LogFactory(LogLevel.Quiet);
                 }
 
                 return _logger;
@@ -61,13 +59,25 @@ namespace Nuget.PackageIndex
         }
 
         protected abstract LuceneDirectory IndexDirectory { get; }
-        protected abstract IPackageSearchEngine Engine { get; }        
-
-        public PackageIndexBase()
-        {
-        }
+        protected abstract IPackageSearchEngine Engine { get; }
 
         #region IPackageIndex
+
+        public bool IndexExists
+        {
+            get
+            {
+                return IndexReader.IndexExists(IndexDirectory);
+            }
+        }
+
+        public DateTime LastWriteTime
+        {
+            get
+            {
+                return new DateTime(IndexReader.LastModified(IndexDirectory));
+            }
+        }
 
         public IList<PackageIndexError> AddPackage(ZipPackage package, bool force = false)
         {
@@ -227,7 +237,7 @@ namespace Nuget.PackageIndex
 
         #region IDisposable 
 
-        ~PackageIndexBase()
+        ~LocalPackageIndexBase()
         {
             Dispose();
         }

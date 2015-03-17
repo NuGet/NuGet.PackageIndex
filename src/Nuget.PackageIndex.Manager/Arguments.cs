@@ -1,28 +1,15 @@
 ﻿using System;
-using NDesk.Options;
 
 namespace Nuget.PackageIndex.Manager
 {
-    public enum PackageIndexManagerAction
-    {
-        Unknown,
-        Monitor,
-        Build,
-        Rebuild,
-        Clean,
-        Add,
-        Remove,
-        Query
-    }
-
-    public class Arguments
+    internal class Arguments
     {
         public static Arguments Load(string[] args)
         {
-            var optionsSet = new OptionSet();
+            var optionsSet = new OptionsSet();
             var arguments = new Arguments(optionsSet);
 
-            optionsSet.Add("a|action=", "Action to be done with package index: Monitor, Build, Rebuild, Clean, Add, Remove, Query.", value =>
+            optionsSet.AddOption("-a|--action=", Resources.ActionDescription, value =>
             {
                 var action = PackageIndexManagerAction.Unknown;
                 if (!string.IsNullOrEmpty(value))
@@ -31,21 +18,20 @@ namespace Nuget.PackageIndex.Manager
                 }
                 arguments.Action = action;
             });
-            optionsSet.Add("t|type=", "Query a type: type=YourType.", value => arguments.Type = value);
-            optionsSet.Add("p|package=", "Query a package: package=YourPackageName.", value => arguments.Package = value);
-            optionsSet.Add("q|quiet", "No output to the log or console.", value => arguments.Quiet = (value != null));
-            optionsSet.Add("v|verbose", "Detailed output to the log or console.", value => arguments.Verbose = (value != null));
-            optionsSet.Add("f|force", "Force selected action.", value => arguments.Force = (value != null));
-            optionsSet.Add("x|exit", "Disconnect index and quit.", value => arguments.ShouldExit = (value != null));
-            optionsSet.Add("?|help", "Display this message.", value => arguments.ShouldHelp = (value != null));
+            optionsSet.AddOption("-t|--type=", Resources.TypeDescription, value => arguments.Type = value);
+            optionsSet.AddOption("-p|--package=", Resources.PackageDescription, value => arguments.Package = value);
+            optionsSet.AddOption("-q|--quiet", Resources.QuietDescription, value => arguments.Quiet = (value != null));
+            optionsSet.AddOption("-v|--verbose", Resources.VerboseDescription, value => arguments.Verbose = (value != null));
+            optionsSet.AddOption("-f|--force", Resources.ForceDescription, value => arguments.Force = (value != null));
+            optionsSet.AddOption("-?|--help", Resources.HelpDescription, value => arguments.ShouldHelp = (value != null));
             optionsSet.Parse(args);
-
+            
             return arguments;
         }
 
-        private OptionSet _optionSet;
+        private OptionsSet _optionSet;
 
-        public Arguments(OptionSet optionSet)
+        public Arguments(OptionsSet optionSet)
         {
             _optionSet = optionSet;
         }
@@ -56,14 +42,11 @@ namespace Nuget.PackageIndex.Manager
         public bool Force { get; set; }
         public bool Quiet { get; set; }
         public bool Verbose { get; set; }
-        public bool ShouldExit { get; set; }
         public bool ShouldHelp { get; set; }
 
         public void PrintHelpMessage()
         {
-            Console.WriteLine("Package Index Monitor");
-            Console.WriteLine();
-            _optionSet.WriteOptionDescriptions(Console.Out);
+            _optionSet.PrintHelpMessage(Console.Out);
         }
     }
 }

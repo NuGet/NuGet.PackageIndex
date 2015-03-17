@@ -3,6 +3,7 @@ using Lucene.Net.Store;
 using LuceneDirectory = Lucene.Net.Store.Directory;
 using Nuget.PackageIndex.Logging;
 using Nuget.PackageIndex.Engine;
+using System.Linq;
 
 namespace Nuget.PackageIndex
 {
@@ -12,18 +13,20 @@ namespace Nuget.PackageIndex
     ///     - \Program Files (x86)\Microsoft Web Tools\Packages
     ///     - %UserProfile%\.k\packages
     /// </summary>
-    public class LocalPackageIndex : PackageIndexBase
+    internal class LocalPackageIndex : LocalPackageIndexBase
     {
+        private const string DefaultIndexPath = @"%UserProfile%\AppData\Local\Microsoft\PackageIndex";
+
         private readonly LuceneDirectory _directory;
         private readonly IPackageSearchEngine _engine;
 
         private readonly string _location;
 
-        public LocalPackageIndex(ILogger logger = null)
+        public LocalPackageIndex(ILog logger = null)
         {
             Logger = logger;
 
-            _location = Environment.ExpandEnvironmentVariables(@"%UserProfile%\AppData\Local\Microsoft\PackageIndex");
+            _location = Environment.ExpandEnvironmentVariables(DefaultIndexPath);
             if (!System.IO.Directory.Exists(_location))
             {
                 System.IO.Directory.CreateDirectory(_location);
@@ -36,7 +39,7 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// ctor for unit tests
         /// </summary>
-        internal LocalPackageIndex(LuceneDirectory directory, IPackageSearchEngine engine, ILogger logger)
+        internal LocalPackageIndex(LuceneDirectory directory, IPackageSearchEngine engine, ILog logger)
         {
             _directory = directory;
             _engine = engine;

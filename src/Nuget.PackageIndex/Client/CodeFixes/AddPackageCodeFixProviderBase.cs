@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
+using Nuget.PackageIndex.Logging;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -18,7 +19,12 @@ namespace Nuget.PackageIndex.Client.CodeFixes
         private readonly IPackageSearcher _packageSearcher;
 
         public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller)
-            : this(packageInstaller, new PackageSearcher())
+            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)))
+        {
+        }
+
+        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, ILog logger)
+            : this(packageInstaller, new PackageSearcher(logger))
         {
         }
 

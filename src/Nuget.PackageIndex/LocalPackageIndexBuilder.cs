@@ -1,0 +1,216 @@
+﻿using NuGet;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using ILog = Nuget.PackageIndex.Logging.ILog;
+using Nuget.PackageIndex.Engine;
+
+namespace Nuget.PackageIndex
+{
+    public class LocalPackageIndexBuilder : IDisposable
+    {
+        private static readonly object _indexLock = new object();
+        private bool _disposed;
+
+        // TODO in order to get all default nuget sources on local machine,
+        // we would need to have another method in IVsPackageInstallerService, some thing like
+        // GetPreinstalledPackages sources etc, which would give us all local sources for all 
+        // installed VS extensions
+        // or 
+        // we would need to request sources from IVsPackageInstallerServices based on project,
+        // in this case should we have multiple local indexes? - i think one index is preferrable.
+        private const string PackageSourcesEnvironmentVariable = "NugetLocalPackageSources";
+        private List<string> DefaultSources = new List<string>()
+            {
+                @"%ProgramFiles(x86)%\Microsoft Web Tools\Packages",
+                @"%UserProfile%\.dnx\packages"
+            };
+
+        private List<string> _packageSources;
+        private readonly ILocalPackageIndex _index;
+        public ILocalPackageIndex Index
+        {
+            get
+            {
+                return _index;
+            }
+        }
+
+        private readonly ILog _logger;
+
+        public LocalPackageIndexBuilder(ILog logger)
+            : this(new LocalPackageIndex(logger), logger)
+        {
+        }
+
+        internal LocalPackageIndexBuilder(ILocalPackageIndex index, ILog logger)
+        {
+            _logger = logger;
+            _index = index;
+
+            InitializePackageSources();
+        }
+
+        private void InitializePackageSources()
+        {
+            var sources = new List<string>(DefaultSources);
+            var additionalSourcesVariableValue = Environment.GetEnvironmentVariable(PackageSourcesEnvironmentVariable);
+            if (!string.IsNullOrEmpty(additionalSourcesVariableValue))
+            {
+                sources.AddRange(additionalSourcesVariableValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            _packageSources = sources.Select(x => Environment.ExpandEnvironmentVariables(x)).ToList();
+        }
+
+        /// <summary>
+        /// Getting packages from local folders that contain packages.
+        /// </summary>
+        private IEnumerable<string> GetPackages(bool newOnly)
+        {
+            _logger.WriteVerbose("Checking packages at: {0}", string.Join(";", _packageSources));
+
+            foreach (var source in _packageSources)
+            {
+                var nupkgFiles = Directory.GetFiles(source, "*.nupkg", SearchOption.AllDirectories);
+                foreach (var nupkgFile in nupkgFiles)
+                {
+                    if (newOnly && File.GetLastWriteTime(nupkgFile) <= _index.LastWriteTime)
+                    {
+                        continue;
+                    }
+
+                    yield return nupkgFile;
+                }
+            }
+        }
+
+        public LocalPackageIndexBuilderResult Build(bool newOnly = false)
+        {
+            _logger.WriteInformation("Started building index.");
+            var stopWatch = Stopwatch.StartNew();
+
+            // now get all known packages and add them to index again
+            var packagePaths = GetPackages(newOnly).ToList();
+            _logger.WriteVerbose("Found {0} packages to be added to the index.", packagePaths.Count());
+            bool success = true;
+            foreach (var nupkgFilePath in packagePaths)
+            {
+                var errors = AddPackageInternal(nupkgFilePath);
+                success &= (errors == null || !errors.Any());
+            }
+
+            stopWatch.Stop();
+            _logger.WriteInformation("Finished building index.");
+
+            return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };
+        }
+
+        public LocalPackageIndexBuilderResult Clean()
+        {
+            _logger.WriteInformation("Started cleaning index.");
+            var stopWatch = Stopwatch.StartNew();
+
+            var errors =_index.Clean();
+
+            stopWatch.Stop();
+            _logger.WriteInformation("Finished cleaning index, index now is empty.");
+
+            return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+        }
+
+        public LocalPackageIndexBuilderResult Rebuild()
+        {
+            var stopWatch = Stopwatch.StartNew();
+            bool success = Clean().Success && Build().Success;
+            stopWatch.Stop();
+
+            return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };
+        }
+
+        public LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force = false)
+        {
+            _logger.WriteInformation("Started package indexing {0}.", nupkgFilePath);
+            var stopWatch = Stopwatch.StartNew();
+
+            var errors = AddPackageInternal(nupkgFilePath, force);
+
+            stopWatch.Stop();
+            _logger.WriteInformation("Finished package indexing.");
+
+            return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+        }
+
+        public LocalPackageIndexBuilderResult RemovePackage(string packageName, bool force = false)
+        {
+            _logger.WriteInformation("Started package removing {0}.", packageName);
+            var stopWatch = Stopwatch.StartNew();
+
+            var errors =_index.RemovePackage(packageName);
+
+            stopWatch.Stop();
+            _logger.WriteInformation("Finished package removing.");
+
+            return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+        }
+
+        internal IList<PackageIndexError> AddPackageInternal(string nupkgFilePath, bool force = false)
+        {
+            if (string.IsNullOrEmpty(nupkgFilePath))
+            {
+                return null;
+            }
+
+            if (!File.Exists(nupkgFilePath))
+            {
+                return null;
+            }
+
+            ZipPackage package;
+            using (var fs = File.OpenRead(nupkgFilePath))
+            {
+                package = new ZipPackage(fs);
+            }
+
+            return _index.AddPackage(package, force);
+        }
+
+        #region IDisposable 
+
+        ~LocalPackageIndexBuilder()
+        {
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            lock (_indexLock)
+            {
+                if (!_disposed)
+                {
+                    // proceed with local copy 
+                    var index = _index;
+                    if (index != null)
+                    {
+                        try
+                        {
+                            index.Dispose();
+                        }
+                        catch (ObjectDisposedException e)
+                        {
+                            _logger.WriteError("Failed to dispose index. Exception: {0}", e.Message);
+                        }
+                    }
+
+                    _disposed = true;
+                }
+            }
+
+            GC.SuppressFinalize(this);
+        }
+
+        #endregion
+    }
+}

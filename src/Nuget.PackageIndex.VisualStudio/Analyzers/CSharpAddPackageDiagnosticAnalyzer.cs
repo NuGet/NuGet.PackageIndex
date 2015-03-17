@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Nuget.PackageIndex.Client.Analyzers;
 using Nuget.PackageIndex.VisualStudio.Analyzers.IdentifierFilters;
+using Nuget.PackageIndex.Logging;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
@@ -25,7 +26,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             : base(new [] // filters can be hardcoded here untill we need an extensibility
                   {
                       new UsingIdentifierFilter()
-                  })
+                  }) // TODO add logger that prints to Package manager console
         {
         }
 

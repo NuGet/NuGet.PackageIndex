@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using Nuget.PackageIndex.Models;
+using Nuget.PackageIndex.Logging;
 
 namespace Nuget.PackageIndex.Client.Analyzers
 {
@@ -23,7 +24,12 @@ namespace Nuget.PackageIndex.Client.Analyzers
         private readonly IPackageSearcher _packageSearcher;
 
         public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters)
-            : this(new PackageSearcher(), identifierFilters)
+            : this(new PackageSearcher(new LogFactory(LogLevel.Quiet)), identifierFilters)
+        {
+        }
+
+        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, ILog logger)
+            : this(new PackageSearcher(logger), identifierFilters)
         {
         }
 
