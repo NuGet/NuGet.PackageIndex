@@ -28,7 +28,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
         {
         }
 
-        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, ILog logger)
+        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, IProjectFilter projectFilter, ILog logger)
             : this(new PackageSearcher(logger), identifierFilters)
         {
         }

@@ -21,9 +21,9 @@ namespace Nuget.PackageIndex.Manager
 
         public void Parse(string[] args)
         {
-            Option option = null;
             for (var index = 0; index < args.Length; index++)
             {
+                Option option = null;
                 var arg = args[index];
                 string[] longOption = null;
                 string[] shortOption = null;

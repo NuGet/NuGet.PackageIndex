@@ -18,11 +18,9 @@ namespace Nuget.PackageIndex
     /// Base class representing a package index, should be overriden with concrete index 
     /// implementation (local, remote etc)
     /// </summary>
-    public abstract class LocalPackageIndexBase : ILocalPackageIndex, IDisposable
+    internal abstract class LocalPackageIndexBase : ILocalPackageIndex
     {
         protected const int MaxTypesExpected = 5;
-        private static readonly object _directoryLock = new object();
-        private bool _disposed;
 
         private ILog _logger;
         protected ILog Logger {
@@ -60,6 +58,7 @@ namespace Nuget.PackageIndex
 
         protected abstract LuceneDirectory IndexDirectory { get; }
         protected abstract IPackageSearchEngine Engine { get; }
+        protected abstract DateTime GetLastWriteTime();
 
         #region IPackageIndex
 
@@ -75,7 +74,7 @@ namespace Nuget.PackageIndex
         {
             get
             {
-                return new DateTime(IndexReader.LastModified(IndexDirectory));
+                return GetLastWriteTime();
             }
         }
 
@@ -234,54 +233,5 @@ namespace Nuget.PackageIndex
 
             return null;
         }
-
-        #region IDisposable 
-
-        ~LocalPackageIndexBase()
-        {
-            Dispose();
-        }
-
-        public void Dispose()
-        {
-            lock (_directoryLock)
-            {
-                if (!_disposed)
-                {
-                    var engine = Engine;
-                    if (engine != null)
-                    {
-                        try
-                        {
-                            engine.Dispose();
-                        }
-                        catch (ObjectDisposedException e)
-                        {
-                            _logger.WriteError("Failed to dispose engine. Exception: {0}", e.Message);
-                        }
-                    }
-
-                    // proceed with local copy 
-                    var directory = IndexDirectory;
-                    if (directory != null)
-                    {
-                        try
-                        {
-                            directory.Dispose();
-                        }
-                        catch (ObjectDisposedException e)
-                        {
-                            _logger.WriteError("Failed to dispose index directory. Exception: {0}", e.Message);
-                        }
-                    }
-
-                    _disposed = true;
-                }
-            }
-
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
     }
 }

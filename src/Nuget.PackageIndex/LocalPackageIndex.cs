@@ -64,6 +64,15 @@ namespace Nuget.PackageIndex
             }
         }
 
+        protected override DateTime GetLastWriteTime()
+        {
+            if (System.IO.Directory.Exists(_location))
+            {
+                return System.IO.Directory.GetLastWriteTime(_location);
+            }
+
+            return DateTime.MinValue;
+        }
         #endregion
     }
 }

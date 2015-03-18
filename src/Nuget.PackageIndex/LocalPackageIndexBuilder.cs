@@ -9,11 +9,8 @@ using Nuget.PackageIndex.Engine;
 
 namespace Nuget.PackageIndex
 {
-    public class LocalPackageIndexBuilder : IDisposable
+    public class LocalPackageIndexBuilder : ILocalPackageIndexBuilder
     {
-        private static readonly object _indexLock = new object();
-        private bool _disposed;
-
         // TODO in order to get all default nuget sources on local machine,
         // we would need to have another method in IVsPackageInstallerService, some thing like
         // GetPreinstalledPackages sources etc, which would give us all local sources for all 
@@ -68,7 +65,7 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Getting packages from local folders that contain packages.
         /// </summary>
-        private IEnumerable<string> GetPackages(bool newOnly)
+        public IEnumerable<string> GetPackages(bool newOnly)
         {
             _logger.WriteVerbose("Checking packages at: {0}", string.Join(";", _packageSources));
 
@@ -93,6 +90,15 @@ namespace Nuget.PackageIndex
             var stopWatch = Stopwatch.StartNew();
 
             // now get all known packages and add them to index again
+            if (newOnly)
+            {
+                _logger.WriteVerbose("Looking only for new packages...");
+            }
+            else
+            {
+                _logger.WriteVerbose("Looking all existing packages...");
+            }
+
             var packagePaths = GetPackages(newOnly).ToList();
             _logger.WriteVerbose("Found {0} packages to be added to the index.", packagePaths.Count());
             bool success = true;
@@ -168,49 +174,20 @@ namespace Nuget.PackageIndex
                 return null;
             }
 
-            ZipPackage package;
-            using (var fs = File.OpenRead(nupkgFilePath))
+            ZipPackage package = null;
+            try
             {
-                package = new ZipPackage(fs);
+                using (var fs = File.OpenRead(nupkgFilePath))
+                {
+                    package = new ZipPackage(fs);
+                }
+            }
+            catch(Exception e)
+            {
+                _logger.WriteError(string.Format("Failed to open package file '{0}'. Message: '{1}'", nupkgFilePath, e.Message));
             }
 
             return _index.AddPackage(package, force);
         }
-
-        #region IDisposable 
-
-        ~LocalPackageIndexBuilder()
-        {
-            Dispose();
-        }
-
-        public void Dispose()
-        {
-            lock (_indexLock)
-            {
-                if (!_disposed)
-                {
-                    // proceed with local copy 
-                    var index = _index;
-                    if (index != null)
-                    {
-                        try
-                        {
-                            index.Dispose();
-                        }
-                        catch (ObjectDisposedException e)
-                        {
-                            _logger.WriteError("Failed to dispose index. Exception: {0}", e.Message);
-                        }
-                    }
-
-                    _disposed = true;
-                }
-            }
-
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
     }
 }

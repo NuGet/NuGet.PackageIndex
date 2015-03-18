@@ -5,6 +5,8 @@ namespace Nuget.PackageIndex.Logging
 {
     public class LogFactory : ILog
     {
+        private object _lock = new object();
+
         private List<ILogProvider> _logProviders;
         public LogFactory(LogLevel level)
         {
@@ -18,7 +20,10 @@ namespace Nuget.PackageIndex.Logging
         {
             if (provider != null)
             {
-                _logProviders.Add(provider);
+                lock (_lock)
+                {
+                    _logProviders.Add(provider);
+                }
             }
         }
 
@@ -28,7 +33,10 @@ namespace Nuget.PackageIndex.Logging
             {
                 try
                 {
-                    _logProviders.ForEach(x => x.WriteVerbose(format, args));
+                    lock(_lock)
+                    {
+                        _logProviders.ForEach(x => x.WriteVerbose(format, args));
+                    }
                 }
                 catch(IOException)
                 {
@@ -43,7 +51,10 @@ namespace Nuget.PackageIndex.Logging
             {
                 try
                 {
-                    _logProviders.ForEach(x => x.WriteInformation(format, args));
+                    lock (_lock)
+                    {
+                        _logProviders.ForEach(x => x.WriteInformation(format, args));
+                    }
                 }
                 catch (IOException)
                 {
@@ -58,7 +69,10 @@ namespace Nuget.PackageIndex.Logging
             {
                 try
                 {
-                    _logProviders.ForEach(x => x.WriteError(format, args));
+                    lock (_lock)
+                    {
+                        _logProviders.ForEach(x => x.WriteError(format, args));
+                    }
                 }
                 catch (IOException)
                 {

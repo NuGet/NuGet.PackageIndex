@@ -15,13 +15,20 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
     /// Implementation of IPackageInstaller that does actual package installation via 
     /// importing IVsPackageInstaller component and installing a package in a DTE project
     /// </summary>
-    internal class PackageInstaller : IPackageInstaller
+    internal class PackageInstaller : IPackageInstaller, IDisposable
     {
+        private bool _disposed = false;
+
         private readonly SVsServiceProvider _serviceProvider;
 
         public PackageInstaller(SVsServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
+
+            var container = _serviceProvider.GetService<IComponentModel, SComponentModel>();
+            IVsPackageInstallerEvents nugetInstallerEvents = container.DefaultExportProvider.GetExportedValue<IVsPackageInstallerEvents>();
+
+            nugetInstallerEvents.PackageInstalled += OnPackageInstalled;
         }
 
         public void InstallPackage(Workspace workspace, Document document, TypeModel typeModel, CancellationToken cancellationToken = default(CancellationToken))
@@ -47,6 +54,49 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                     Debug.Write(string.Format("{0} \r\n {1}", e.Message, e.StackTrace));
                 }
             }); 
+        }
+
+        private void OnPackageInstalled(IVsPackageMetadata metadata)
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                // Fire and forget. When new package is installed, we are not just adding this package to the index,
+                // but instead we attempt full sync. Full sync in this case would only sync new packages that don't 
+                // exist in the index which should be fast. The reason for full sync is that when there are several 
+                // instances of VS and each tries to update index at the same tiime, only one would succeed, other 
+                // would notive that index is locked and skip this operation. Thus if all VS instances attempt full 
+                // sync at least one of them would do it and add all new packages to the index.
+                var indexFactory = new PackageIndexFactory();
+                var builder = indexFactory.GetLocalIndexBuilder();
+                
+                var result = builder.Build(newOnly:true);
+            }).ConfigureAwait(false);
+        }
+
+        ~PackageInstaller()
+        {
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                try
+                {
+                    var container = _serviceProvider.GetService<IComponentModel, SComponentModel>();
+                    IVsPackageInstallerEvents nugetInstallerEvents = container.DefaultExportProvider.GetExportedValue<IVsPackageInstallerEvents>();
+                    nugetInstallerEvents.PackageInstalled -= OnPackageInstalled;
+                }
+                catch(Exception e)
+                {
+                    Debug.WriteLine(e.Message); // do nothing for now, log?                    
+                }
+
+                _disposed = true;
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

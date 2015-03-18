@@ -89,6 +89,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.VisualStudio.ComponentModelHost.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.VisualStudio.OLE.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
     <Reference Include="Microsoft.VisualStudio.Shell.14.0, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.VisualStudio.Shell.14.0.dll</HintPath>
@@ -146,6 +147,7 @@
   <ItemGroup>
     <Compile Include="Analyzers\CSharpAddPackageDiagnosticAnalyzer.cs" />
     <Compile Include="Analyzers\IdentifierFilters\UsingIdentifierFilter.cs" />
+    <Compile Include="ProjectKFilter.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxTriviaExtensions.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxListExtensions.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\TypeSyntaxComparer.cs" />
@@ -157,6 +159,8 @@
     <Compile Include="CodeFixes\CSharp\CSharpAddPackageCodeFixProvider.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\CompilationUnitSyntaxExtensions.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxNodeExtensions.cs" />
+    <Compile Include="LocalNugetPackageIndex.cs" />
+    <Compile Include="ILocalNugetPackageIndex.cs" />
     <Compile Include="Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

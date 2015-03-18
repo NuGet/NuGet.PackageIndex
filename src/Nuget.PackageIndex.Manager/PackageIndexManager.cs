@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using Nuget.PackageIndex.Logging;
 using Nuget.PackageIndex.Models;
+using System.Threading.Tasks;
 
 namespace Nuget.PackageIndex.Manager
 {
@@ -36,10 +37,8 @@ namespace Nuget.PackageIndex.Manager
                     return;
                 }
 
-                using (var builder = GetBuilder(arguments))
-                {
-                    ProcessAction(builder, arguments, false);
-                }
+                var builder = GetBuilder(arguments);
+                ProcessAction(builder, arguments, false);
             }
             catch (Exception e)
             {
@@ -47,7 +46,7 @@ namespace Nuget.PackageIndex.Manager
             }
         }
 
-        private LocalPackageIndexBuilder GetBuilder(Arguments arguments)
+        private ILocalPackageIndexBuilder GetBuilder(Arguments arguments)
         {
             var logLevel = LogLevel.Information;
             if (arguments.Quiet)
@@ -59,14 +58,15 @@ namespace Nuget.PackageIndex.Manager
                 logLevel = LogLevel.Verbose;
             }
 
-            var factory = new LogFactory(logLevel);
-            factory.AddProvider(new ConsoleLogger());
+            var logFactory = new LogFactory(logLevel);
+            logFactory.AddProvider(new ConsoleLogger());
 
-            var builder = new LocalPackageIndexBuilder(factory);
-            return builder;
+            var indexFactory = new PackageIndexFactory(logFactory);
+
+            return indexFactory.GetLocalIndexBuilder();
         }
 
-        private void ProcessAction(LocalPackageIndexBuilder builder, Arguments arguments, bool commandMode)
+        private void ProcessAction(ILocalPackageIndexBuilder builder, Arguments arguments, bool commandMode)
         {
             LocalPackageIndexBuilderResult result = null;
             switch (arguments.Action)

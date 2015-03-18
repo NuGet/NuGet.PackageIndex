@@ -9,7 +9,7 @@ namespace Nuget.PackageIndex
     /// <summary>
     /// Represents package index and exposes common operations for all index types (local, remote)
     /// </summary>
-    public interface IPackageIndex : IDisposable
+    public interface IPackageIndex
     {
         IList<PackageIndexError> AddPackage(ZipPackage package, bool force = false);
         IList<PackageIndexError> RemovePackage(string packageName);

@@ -8,6 +8,7 @@ using Lucene.Net.Search;
 using LuceneDirectory = Lucene.Net.Store.Directory;
 using Nuget.PackageIndex.Models;
 using Nuget.PackageIndex.Logging;
+using System.IO;
 
 namespace Nuget.PackageIndex.Engine
 {
@@ -17,11 +18,9 @@ namespace Nuget.PackageIndex.Engine
     /// information (there could by multiple simultaneous readers). 
     /// Note: there must be only one process that writes to the index.
     /// </summary>
-    public class PackageSearchEngine : IPackageSearchEngine, IDisposable
+    public class PackageSearchEngine : IPackageSearchEngine
     {
-        private static IndexWriter _writer;
         private static readonly object _writerLock = new object();
-        private bool _disposed;
 
         private readonly ILog _logger;
         private readonly LuceneDirectory _directory;
@@ -64,37 +63,38 @@ namespace Nuget.PackageIndex.Engine
         public IList<PackageIndexError> AddEntries<T>(IEnumerable<T> entries, bool optimize) where T : IPackageIndexModel
         {
             IList<PackageIndexError> errors = new List<PackageIndexError>();
-            foreach (var entry in entries)
-            {
-                try
-                {
-                    RemoveEntryInternal(entry);
-
-                    var currentEntry = entry;
-                    DoWriterAction(writer => writer.AddDocument(currentEntry.ToDocument()));
-                }
-                catch (Exception ex)
-                {
-                    errors.Add(new PackageIndexError(entry, ex));
-                }
-            }
 
             try
             {
-                DoWriterAction(writer =>
+                using (var writer = GetIndexWriter())
                 {
+                    foreach (var entry in entries)
+                    {
+                        try
+                        {
+                            // delete old entry if it exists
+                            writer.DeleteDocuments(entry.GetDefaultSearchQuery());
+
+                            // add new entry
+                            writer.AddDocument(entry.ToDocument());
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add(new PackageIndexError(entry, ex));
+                        }
+                    }
+
                     writer.Commit();
                     if (optimize)
                     {
                         writer.Optimize();
                     }
-                });
+                }
             }
             catch (Exception ex)
             {
-                // Note: if OutOfMemory we should call Close/Dispose for writer immediatelly!  
                 errors.Add(new PackageIndexError(null, ex));
-                _logger.WriteError("Failed to commit or optimize index writer. Exception: {0}", ex.Message);
+                _logger.WriteError("Index write operation failed. Exception: '{0}'", ex.Message);
             }
 
             return errors;
@@ -122,33 +122,55 @@ namespace Nuget.PackageIndex.Engine
         public IList<PackageIndexError> RemoveEntries<T>(IEnumerable<T> entries, bool optimize) where T : IPackageIndexModel
         {
             IList<PackageIndexError> errors = new List<PackageIndexError>();
-            foreach (var entry in entries)
-            {
-                try
-                {
-                    RemoveEntryInternal(entry);
-                }
-                catch (Exception ex)
-                {
-                    errors.Add(new PackageIndexError(entry, ex));
-                }
-            }
 
             try
             {
-                DoWriterAction(writer =>
+                using (var writer = GetIndexWriter())
                 {
+                    foreach (var entry in entries)
+                    {
+                        try
+                        {
+                            writer.DeleteDocuments(entry.GetDefaultSearchQuery());
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add(new PackageIndexError(entry, ex));
+                        }
+                    }
+
                     writer.Commit();
                     if (optimize)
                     {
                         writer.Optimize();
                     }
-                });
+                }
             }
             catch (Exception ex)
             {
                 errors.Add(new PackageIndexError(null, ex));
-                _logger.WriteError("Failed to commit or optimize index writer. Exception: {0}", ex.Message);
+                _logger.WriteError("Index write operation failed. Exception: '{0}'", ex.Message);
+            }
+
+            return errors;
+        }
+
+        public IList<PackageIndexError> RemoveAll()
+        {
+            IList<PackageIndexError> errors = new List<PackageIndexError>();
+
+            try
+            {
+                using (var writer = GetIndexWriter())
+                {
+                    writer.DeleteAll();
+                    writer.Commit();
+                };
+            }
+            catch (Exception ex)
+            {
+                errors.Add(new PackageIndexError(null, ex));
+                _logger.WriteError("Index write operation failed. Exception: '{0}'", ex.Message);
             }
 
             return errors;
@@ -191,26 +213,6 @@ namespace Nuget.PackageIndex.Engine
             return results;
         }
 
-        public IList<PackageIndexError> RemoveAll()
-        {
-            IList<PackageIndexError> errors = new List<PackageIndexError>();
-            try
-            {
-                DoWriterAction(writer =>
-                {
-                    writer.DeleteAll();
-                    writer.Commit();
-                });
-            }
-            catch (Exception ex)
-            {
-                errors.Add(new PackageIndexError(null, ex));
-                _logger.WriteError("Failed to remove all documents from index. Exception: {0}", ex.Message);
-            }
-
-            return errors;
-        }
-
         #endregion
 
         /// <summary>
@@ -230,11 +232,7 @@ namespace Nuget.PackageIndex.Engine
             }
         }
 
-        /// <summary>
-        /// Thread safe wrapper around IndexWriter. Throws exception if in readonly mode.
-        /// </summary>
-        /// <param name="action">Action to be performed by writer</param>
-        private void DoWriterAction(Action<IndexWriter> action)
+        private IndexWriter GetIndexWriter()
         {
             if (IsReadonly)
             {
@@ -251,106 +249,17 @@ namespace Nuget.PackageIndex.Engine
 
             lock (_writerLock)
             {
-                EnsureIndexWriter();
-            }
-            action(_writer);
-        }
-
-        /// <summary>
-        /// Thread safe wrapper around IndexWriter. Throws exception if in readonly mode.
-        /// </summary>
-        /// <param name="action">Func to be performed by writer</param>
-        private T DoWriterAction<T>(Func<IndexWriter, T> action)
-        {
-            if (IsReadonly)
-            {
-                // Note: there should be only one writer that writes to the directory, since writers 
-                // put lock file in directory. Even though in our EnsureIdexWriter we can unlock 
-                // directory, this would work only if there no any otther process locking directory.
-                // So basically we can handle multithreading in one process, but can not have several 
-                // processes writing to the directory.
-                // That's said we want to throw here to make sure users of this class are aware of 
-                // this fact and if engine is explicitly in readonly mode it is assumed to do only 
-                // search and should never attempts calling writer.
-                throw new Exception("Search engine is in readonly mode, can not perform this action.");
-            }
-
-            lock (_writerLock)
-            {
-                EnsureIndexWriter();
-            }
-            return action(_writer);
-        }
-
-        /// <summary>
-        /// Ensures singleton writer is initialized and ready to go.
-        /// Note: should only be called from within a lock.
-        /// </summary>
-        private void EnsureIndexWriter()
-        {
-            if (_writer == null)
-            {
-                // TODO Handle unlock differently - we may have several processes runing this class 
-                // not just threads on the same process, so we need to unlock/lock differently:
-                //    - for example see what process put lock there and wait until process exists 
-                //      or for some timeout etc.
+                // lock writer initialization to prevent several writers created by different threads
                 if (IndexWriter.IsLocked(_directory))
-                {
-                    _logger.WriteInformation("Something left a lock in the index folder: deleting it");
-                    IndexWriter.Unlock(_directory);
-                    _logger.WriteInformation("Lock Deleted... can proceed");
+                {                    
+                    throw new Exception("Index is locked, some other write operation is in progress.");
                 }
 
-                _writer = new IndexWriter(_directory, _analyzer, new IndexWriter.MaxFieldLength(256));
-                _writer.SetMergePolicy(new LogDocMergePolicy(_writer));
-                _writer.MergeFactor = 5;
+                var writer = new IndexWriter(_directory, _analyzer, new IndexWriter.MaxFieldLength(256));
+                writer.SetMergePolicy(new LogDocMergePolicy(writer));
+                writer.MergeFactor = 5;
+                return writer;
             }
         }
-
-        /// <summary>
-        /// Removes given entry from the index, but not commits.
-        /// </summary>
-        /// <param name="entry">Entry to be removed</param>
-        internal void RemoveEntryInternal(IPackageIndexModel entry)
-        {
-            DoWriterAction(writer => writer.DeleteDocuments(entry.GetDefaultSearchQuery()));
-        }
-
-        #region IDisposable 
-
-        ~PackageSearchEngine()
-        {
-            Dispose();
-        }
-
-        public void Dispose()
-        {
-            lock (_writerLock)
-            {
-                if (!_disposed)
-                {
-                    // proceed with local copy 
-                    var writer = _writer;
-                    if (writer != null)
-                    {
-                        try
-                        {
-                            writer.Dispose();
-                        }
-                        catch (ObjectDisposedException e)
-                        {
-                            _logger.WriteError("Failed to dispose index writer. Exception: {0}", e.Message);
-                        }
-                        _writer = null;
-                    }
-
-                    _disposed = true;
-                }
-            }
-
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
     }
 }

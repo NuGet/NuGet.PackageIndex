@@ -138,6 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client\Analyzers\AddPackageDiagnosticAnalyzer.cs" />
+    <Compile Include="Client\Analyzers\IProjectFilter.cs" />
     <Compile Include="Client\Analyzers\IIdentifierFilter.cs" />
     <Compile Include="Client\Analyzers\UnknownIdentifierDiagnosticAnalyzerBase.cs" />
     <Compile Include="Client\CodeFixes\IPackageInstaller.cs" />
@@ -150,6 +151,7 @@
     <Compile Include="Engine\IPackageSearchEngine.cs" />
     <Compile Include="Engine\PackageIndexError.cs" />
     <Compile Include="Engine\PackageSearchEngine.cs" />
+    <Compile Include="ILocalPackageIndexBuilder.cs" />
     <Compile Include="LocalPackageIndexBuilderResult.cs" />
     <Compile Include="LocalPackageIndexBuilder.cs" />
     <Compile Include="Logging\ILogProvider.cs" />

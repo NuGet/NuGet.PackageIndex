@@ -6,7 +6,8 @@
     /// </summary>
     public interface IPackageIndexFactory
     {
-        ILocalPackageIndex GetLocalIndex();
+        ILocalPackageIndex GetLocalIndex(bool createIfNotExists = true);
         IRemotePackageIndex GetRemoteIndex();
+        ILocalPackageIndexBuilder GetLocalIndexBuilder();
     }
 }
