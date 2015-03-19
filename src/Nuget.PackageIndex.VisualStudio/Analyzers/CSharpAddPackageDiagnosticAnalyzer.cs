@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Nuget.PackageIndex.Client.Analyzers;
 using Nuget.PackageIndex.VisualStudio.Analyzers.IdentifierFilters;
-using System;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
@@ -28,7 +27,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             : base(new [] // filters can be hardcoded here untill we need an extensibility
                           {
                               new UsingIdentifierFilter()
-                          }) // TODO add logger that prints to Package manager console
+                          }, new TargetFrameworkProvider()) // TODO add logger that prints to Package manager console
         {
             _projectFilter = new ProjectKFilter();
         }
@@ -63,14 +62,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
 
         protected override IProjectFilter GetProjectFilter()
         {
-            // this static instance of the filter is initialized in CSharpAddPackageCodeFixProvider 
-            // which is initialized by MEF and receives an instance of SVsServiceProvider. Thi is a hack,
-            // since DiagnosticAnalyzers are loaded using reflection and Attributes instead of MEF composition,
-            // so we can not receive SVsServiceProvider for Diagnostic analyzer and just use this static instance.
-            // Filters shuold be removed after RC, this hack is temporary
-
-
-
+            // Project Filters shuold be removed after RC, this hack is temporary
             return _projectFilter;
         }
     }

@@ -1,8 +1,5 @@
 ﻿using System.Collections.Generic;
-using NuGet;
-using Nuget.PackageIndex.Engine;
 using Nuget.PackageIndex.Models;
-using System;
 
 namespace Nuget.PackageIndex
 {
@@ -11,10 +8,7 @@ namespace Nuget.PackageIndex
     /// </summary>
     public interface IPackageIndex
     {
-        IList<PackageIndexError> AddPackage(ZipPackage package, bool force = false);
-        IList<PackageIndexError> RemovePackage(string packageName);
-        IList<PackageIndexError> Clean();
-        IList<TypeModel> GetTypes(string typeName);
-        IList<PackageModel> GetPackages(string packageName);
+        IList<TypeInfo> GetTypes(string typeName);
+        IList<PackageInfo> GetPackages(string packageName);
     }
 }

@@ -10,6 +10,6 @@ namespace Nuget.PackageIndex
     /// </summary>
     public interface IPackageSearcher
     {
-        IEnumerable<TypeModel> Search(string typeName);
+        IEnumerable<TypeInfo> Search(string typeName);
     }
 }

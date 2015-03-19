@@ -1,6 +1,8 @@
 ﻿using Lucene.Net.Documents;
 using Lucene.Net.Index;
 using Lucene.Net.Search;
+using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -9,7 +11,7 @@ namespace Nuget.PackageIndex.Models
     /// <summary>
     /// Model for a public type found in a package's assemblies.
     /// </summary>
-    public class TypeModel : IPackageIndexModel
+    internal class TypeModel : TypeInfo, IPackageIndexModel
     {
         internal const float TypeHashFieldBoost = 4f; // boost hash field more , since ythis is a primary ID
         internal const float TypeNameFieldBoost = 2f; // boost type name since this is the most common user search field
@@ -19,6 +21,7 @@ namespace Nuget.PackageIndex.Models
         internal const string TypeAssemblyNameField = "TypeAssemblyName";
         internal const string TypePackageNameField = "TypePackageName";
         internal const string TypePackageVersionField = "TypePackageVersion";
+        internal const string TypeTargetFrameworksField = "TypeTargetFrameworks";
 
         public static string GetMD5Hash(TypeModel typeEntity)
         {
@@ -41,14 +44,9 @@ namespace Nuget.PackageIndex.Models
             return stringBuilder.ToString();
         }
 
-        public string Name { get; set; }
-        public string FullName { get; set; }
-        public string AssemblyName { get; set; }
-        public string PackageName { get; set; }
-        public string PackageVersion { get; set; }
-
         public TypeModel()
         {
+            TargetFrameworks = new List<string>();
         }
 
         public TypeModel(Document document)
@@ -58,20 +56,13 @@ namespace Nuget.PackageIndex.Models
             AssemblyName = document.Get(TypeAssemblyNameField);
             PackageName = document.Get(TypePackageNameField);
             PackageVersion = document.Get(TypePackageVersionField);
-        }
+            var targetFrameworksFieldValue = document.Get(TypeTargetFrameworksField);
 
-        public override string ToString()
-        {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.Append(FullName)
-                         .Append(",")
-                         .Append(AssemblyName)
-                         .Append(",")
-                         .Append(PackageName)
-                         .Append(" ")
-                         .Append(PackageVersion);
-
-            return stringBuilder.ToString();
+            TargetFrameworks = new List<string>();
+            if (!string.IsNullOrEmpty(targetFrameworksFieldValue))
+            {
+                TargetFrameworks.AddRange(targetFrameworksFieldValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+            }
         }
 
         public Document ToDocument()
@@ -86,6 +77,7 @@ namespace Nuget.PackageIndex.Models
             var typeAssemblyName = new Field(TypeAssemblyNameField, AssemblyName, Field.Store.YES, Field.Index.NO, Field.TermVector.NO);
             var typePackageName = new Field(TypePackageNameField, PackageName, Field.Store.YES, Field.Index.ANALYZED, Field.TermVector.NO);
             var typePackageVersion = new Field(TypePackageVersionField, PackageVersion, Field.Store.YES, Field.Index.NO, Field.TermVector.NO);
+            var typeTargetFrameworks = new Field(TypeTargetFrameworksField, GetTargetFrameworksString(), Field.Store.YES, Field.Index.NO, Field.TermVector.NO);
 
             document.Add(typeHash);
             document.Add(typeName);
@@ -93,6 +85,7 @@ namespace Nuget.PackageIndex.Models
             document.Add(typeAssemblyName);
             document.Add(typePackageName);
             document.Add(typePackageVersion);
+            document.Add(typeTargetFrameworks);
 
             return document;
         }

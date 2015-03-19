@@ -56,13 +56,6 @@ namespace Nuget.PackageIndex.Client.Analyzers
         {
             var identifierNameSyntaxNode = (TIdentifierNameSyntax)context.Node;
 
-            // TODO remove this after RC
-            var projectFilter = GetProjectFilter();
-            if (!projectFilter.IsProjectSupported(identifierNameSyntaxNode.GetLocation().SourceTree.FilePath))
-            {
-                return;
-            }
-
             Func<SyntaxNode, bool> isQualifiedOrSimpleName = (SyntaxNode n) => n is TQualifiedNameSyntax || n is TSimpleNameSyntax;
 
             if (!isQualifiedOrSimpleName(identifierNameSyntaxNode))
@@ -102,7 +95,6 @@ namespace Nuget.PackageIndex.Client.Analyzers
         protected abstract DiagnosticDescriptor DiagnosticDescriptor { get; }
         protected abstract ImmutableArray<TLanguageKindEnum> SyntaxKindsOfInterest { get; }
         protected abstract IEnumerable<string> AnalyzeNode(TIdentifierNameSyntax node);
-        protected abstract IProjectFilter GetProjectFilter();
 
         #endregion
     }

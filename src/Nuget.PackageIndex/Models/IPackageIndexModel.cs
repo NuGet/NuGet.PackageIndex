@@ -7,7 +7,7 @@ namespace Nuget.PackageIndex.Models
     /// Package Index model representation, all models must implement it if they want to be 
     /// stored in the index.
     /// </summary>
-    public interface IPackageIndexModel
+    internal interface IPackageIndexModel
     {
         Document ToDocument();
         Query GetDefaultSearchQuery();

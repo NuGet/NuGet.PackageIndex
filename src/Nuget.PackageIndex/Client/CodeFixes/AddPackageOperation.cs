@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
-using Nuget.PackageIndex.Models;
+using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -13,20 +13,20 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     {
         private readonly IPackageInstaller _packageInstaller;
         private readonly Document _document;
-        private readonly TypeModel _typeModel;
+        private readonly TypeInfo _typeInfo;
         private readonly string _title;
 
-        public AddPackageOperation(IPackageInstaller packageInstaller, Document document, TypeModel typeModel, string title)
+        public AddPackageOperation(IPackageInstaller packageInstaller, Document document, TypeInfo typeInfo, string title)
         {
             _packageInstaller = packageInstaller;
             _document = document;
-            _typeModel = typeModel;
+            _typeInfo = typeInfo;
             _title = title;
         }
 
         public override void Apply(Workspace workspace, CancellationToken cancellationToken = default(CancellationToken))
         {
-            _packageInstaller.InstallPackage(workspace, _document, _typeModel, cancellationToken);
+            _packageInstaller.InstallPackage(workspace, _document, _typeInfo, cancellationToken);
         }
 
         public override string Title

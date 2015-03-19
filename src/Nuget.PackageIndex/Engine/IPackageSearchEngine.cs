@@ -9,7 +9,7 @@ namespace Nuget.PackageIndex.Engine
     /// <summary>
     /// Index search engine common interface.
     /// </summary>
-    public interface IPackageSearchEngine
+    internal interface IPackageSearchEngine
     {
         bool IsReadonly { get; }
         IList<PackageIndexError> AddEntry<T>(T entry) where T : IPackageIndexModel;

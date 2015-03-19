@@ -41,6 +41,9 @@
     <Reference Include="EnvDTE, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
+    <Reference Include="envdte80, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="Microsoft.CodeAnalysis, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.CodeAnalysis.dll</HintPath>
@@ -147,6 +150,10 @@
   <ItemGroup>
     <Compile Include="Analyzers\CSharpAddPackageDiagnosticAnalyzer.cs" />
     <Compile Include="Analyzers\IdentifierFilters\UsingIdentifierFilter.cs" />
+    <Compile Include="Analyzers\ProjectTargetFrameworkProviderExporter.cs" />
+    <Compile Include="Analyzers\IProjectTargetFrameworkProviderExporter.cs" />
+    <Compile Include="Analyzers\TargetFrameworkProvider.cs" />
+    <Compile Include="Analyzers\IProjectTargetFrameworkProvider.cs" />
     <Compile Include="ProjectKFilter.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxTriviaExtensions.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxListExtensions.cs" />
@@ -172,7 +179,7 @@
     <Compile Include="IVsHierarchyExtensions.cs" />
     <Compile Include="IServiceProviderExtensions.cs" />
     <Compile Include="CodeFixes\PackageInstaller.cs" />
-    <Compile Include="CodeFixes\DocumentExtensions.cs" />
+    <Compile Include="DocumentExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CodeFixes\SourceTextExtensions.cs" />
   </ItemGroup>

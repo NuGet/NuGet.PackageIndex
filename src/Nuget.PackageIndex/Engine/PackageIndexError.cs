@@ -1,5 +1,4 @@
 ﻿using System;
-using Nuget.PackageIndex.Models;
 
 namespace Nuget.PackageIndex.Engine
 {
@@ -9,10 +8,10 @@ namespace Nuget.PackageIndex.Engine
     /// </summary>
     public class PackageIndexError
     {
-        public IPackageIndexModel Entry { get; set; }
+        public object Entry { get; set; }
         public Exception Exception { get; set; }
 
-        public PackageIndexError(IPackageIndexModel entry, Exception exception)
+        public PackageIndexError(object entry, Exception exception)
         {
             Entry = entry;
             Exception = exception;

@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 using Microsoft.CodeAnalysis;
-using Nuget.PackageIndex.Models;
+using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -11,6 +11,6 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     /// </summary>
     public interface IPackageInstaller
     {
-        void InstallPackage(Workspace workspace, Document document, TypeModel typeModel, CancellationToken cancellationToken = default(CancellationToken));
+        void InstallPackage(Workspace workspace, Document document, TypeInfo typeInfo, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

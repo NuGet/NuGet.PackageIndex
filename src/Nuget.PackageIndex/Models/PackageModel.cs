@@ -1,18 +1,15 @@
-﻿using System.Text;
-using Lucene.Net.Documents;
+﻿using Lucene.Net.Documents;
 using Lucene.Net.Search;
 using Lucene.Net.Index;
 
 namespace Nuget.PackageIndex.Models
 {
-    public class PackageModel : IPackageIndexModel
+    internal class PackageModel : PackageInfo, IPackageIndexModel
     {
         internal const float PackageNameFieldBoost = 2f; // boost name, since t is a primary ID
         internal const string PackageNameField = "PackageName";
         internal const string PackageVersionField = "PackageVersion";
 
-        public string Name { get; set; }
-        public string Version { get; set; }
         public object TypeHashField { get; private set; }
 
         public PackageModel()
@@ -23,15 +20,6 @@ namespace Nuget.PackageIndex.Models
         {
             Name = document.Get(PackageNameField);
             Version = document.Get(PackageVersionField);
-        }
-
-        public override string ToString()
-        {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.Append(Name)
-                         .Append(Version);
-
-            return stringBuilder.ToString();
         }
 
         public Document ToDocument()
@@ -51,6 +39,15 @@ namespace Nuget.PackageIndex.Models
         public Query GetDefaultSearchQuery()
         {
             return new TermQuery(new Term(PackageNameField, Name));
+        }
+
+        public PackageInfo GetPackageInfo()
+        {
+            return new PackageInfo
+            {
+                Name = Name,
+                Version = Version
+            };
         }
     }
 }

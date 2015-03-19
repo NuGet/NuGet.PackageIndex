@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using Lucene.Net.Index;
 using Lucene.Net.Analysis;
 using Lucene.Net.Documents;
@@ -8,17 +9,16 @@ using Lucene.Net.Search;
 using LuceneDirectory = Lucene.Net.Store.Directory;
 using Nuget.PackageIndex.Models;
 using Nuget.PackageIndex.Logging;
-using System.IO;
 
 namespace Nuget.PackageIndex.Engine
 {
     /// <summary>
-    /// Given Lucene directory and anlyzer, wraps all CRUD operations for Lucene index. 
-    /// By default is in Readonly mode, since most users of this class will be searching
-    /// information (there could by multiple simultaneous readers). 
-    /// Note: there must be only one process that writes to the index.
+    /// Given Lucene directory and anlyzer, wraps all CRUD operations for Lucene package index. 
+    /// By default is in Readonly mode, since most users of this class will be searching information
+    /// (there could by multiple simultaneous readers). 
+    /// Note: there must be only one writer accross all processes and threads on a machine.
     /// </summary>
-    public class PackageSearchEngine : IPackageSearchEngine
+    internal class PackageSearchEngine : IPackageSearchEngine
     {
         private static readonly object _writerLock = new object();
 
@@ -37,7 +37,7 @@ namespace Nuget.PackageIndex.Engine
         #region IPackageSearchEngine
 
         /// <summary>
-        /// When in readonly mode all attempts to call "writeable" methods would cause an exception
+        /// When in readonly mode, all attempts to call "writeable" methods would cause an exception
         /// </summary>
         public bool IsReadonly { get; private set; }
 
@@ -155,6 +155,10 @@ namespace Nuget.PackageIndex.Engine
             return errors;
         }
 
+        /// <summary>
+        /// Removes all records in the index
+        /// </summary>
+        /// <returns>List of indexing errors if any</returns>
         public IList<PackageIndexError> RemoveAll()
         {
             IList<PackageIndexError> errors = new List<PackageIndexError>();
@@ -217,39 +221,39 @@ namespace Nuget.PackageIndex.Engine
 
         /// <summary>
         /// Initializes a searcher. If index does not exist returns null. Always creates a readonly searcher.
+        /// Note: there can be any number of searchers/readers which all are thread safe, so we can just create
+        /// new one each time we need to search something.
         /// </summary>
         /// <returns>Returns index searcher</returns>
         private IndexSearcher GetSearcher()
         {
             try
             {
-                // TODO check multithreading scenario here
-                return new IndexSearcher(_directory, true);
+                return IndexReader.IndexExists(_directory)
+                    ? new IndexSearcher(_directory, true)
+                    : null;
             }
-            catch(System.IO.FileNotFoundException)
+            catch(FileNotFoundException)
             {
-                return null; // index is not created yet
+                return null; // just in case
             }
         }
 
+        /// <summary>
+        /// There could be only one writer active across all threads and processes running on the machine,
+        /// since a writer instance locks directory and others can not write to it to prevent index corruption. 
+        /// Thus here we make sure that we don't create writers if directory is already locked.
+        /// </summary>
+        /// <returns>New instance of index writer or null if directory is locked</returns>
         private IndexWriter GetIndexWriter()
         {
             if (IsReadonly)
             {
-                // Note: there should be only one writer that writes to the directory, since writers 
-                // put lock file in directory. Even though in our EnsureIdexWriter we can unlock 
-                // directory, this would work only if there no any otther process locking directory.
-                // So basically we can handle multithreading in one process, but can not have several 
-                // processes writing to the directory.
-                // That's said we want to throw here to make sure users of this class are aware of 
-                // this fact and if engine is explicitly in readonly mode it is assumed to do only 
-                // search and should never attempts calling writer.
-                throw new Exception("Search engine is in readonly mode, can not perform this action.");
+                throw new Exception("Search engine is in readonly mode, can not initialize writer.");
             }
 
-            lock (_writerLock)
+            lock (_writerLock) // prevent several threads creating writer at the same time
             {
-                // lock writer initialization to prevent several writers created by different threads
                 if (IndexWriter.IsLocked(_directory))
                 {                    
                     throw new Exception("Index is locked, some other write operation is in progress.");

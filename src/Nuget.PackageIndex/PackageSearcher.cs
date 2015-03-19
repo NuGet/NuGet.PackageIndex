@@ -18,7 +18,7 @@ namespace Nuget.PackageIndex
             _indexFactory = indexFactory;
         }
 
-        public IEnumerable<TypeModel> Search(string typeName)
+        public IEnumerable<TypeInfo> Search(string typeName)
         {
             var localIndex = _indexFactory.GetLocalIndex();
             if (localIndex == null)

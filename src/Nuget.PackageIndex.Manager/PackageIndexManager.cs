@@ -103,11 +103,11 @@ namespace Nuget.PackageIndex.Manager
                 case PackageIndexManagerAction.Query:
                     if (!string.IsNullOrEmpty(arguments.Type))
                     {
-                        DoQuery(() => { return builder.Index.GetTypes(arguments.Type).Select(x => (IPackageIndexModel)x).ToList(); });
+                        DoQuery(() => { return builder.Index.GetTypes(arguments.Type).Select(x => (object)x).ToList(); });
                     }
                     else if (!string.IsNullOrEmpty(arguments.Package))
                     {
-                        DoQuery(() => { return builder.Index.GetPackages(arguments.Package).Select(x => (IPackageIndexModel)x).ToList(); });
+                        DoQuery(() => { return builder.Index.GetPackages(arguments.Package).Select(x => (object)x).ToList(); });
                     }
                     else
                     {
@@ -126,7 +126,7 @@ namespace Nuget.PackageIndex.Manager
             }
         }
 
-        private void DoQuery(Func<IList<IPackageIndexModel>> queryExecutor)
+        private void DoQuery(Func<IList<object>> queryExecutor)
         {
             var stopWatch = Stopwatch.StartNew();
             var entities = queryExecutor.Invoke();

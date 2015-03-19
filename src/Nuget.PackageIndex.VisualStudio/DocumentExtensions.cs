@@ -1,9 +1,9 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Shell;
-using System;
 
-namespace Nuget.PackageIndex.VisualStudio.CodeFixes
+namespace Nuget.PackageIndex.VisualStudio
 {
     internal static class DocumentExtensions
     {

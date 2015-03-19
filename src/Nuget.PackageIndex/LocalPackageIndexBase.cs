@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Runtime.Versioning;
 using NuGet;
 using Lucene.Net.Analysis;
 using Lucene.Net.Search;
@@ -108,27 +109,25 @@ namespace Nuget.PackageIndex
 
             Logger.WriteInformation("Adding package {0} {1} to index.",  package.Id, package.Version);
             var libFiles = package.GetLibFiles().Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase));
-            var uniqueAssemblies = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-            var packageTypes = new List<TypeModel>();
+            var packageTargetFrameworks = package.GetSupportedFrameworks();
+            var packageTypes = new Dictionary<string, TypeModel>(StringComparer.OrdinalIgnoreCase);
+
             // get a list of all public types in all unique package assemblies
             foreach (IPackageFile dll in libFiles)
             {
-                bool processed = false;
-                if (uniqueAssemblies.TryGetValue(dll.EffectivePath, out processed))
+                // if dll is a contracts dll it provides types accross all frameworks supported by package
+                var dllTtargetFrameworks = packageTargetFrameworks;
+                if (dll.TargetFramework != null && !dll.Path.ToLower().Contains(@"lib\contract"))
                 {
-                    continue;
+                    dllTtargetFrameworks = new[] { dll.TargetFramework };
                 }
-
-                uniqueAssemblies.Add(dll.EffectivePath, true);
-                // if there is a contracts assembly - take it, otherwise use normal assembly
-                var dllToLoad = libFiles.FirstOrDefault(x => x.Path.ToLower().Contains(@"lib\contract")
-                                        && x.EffectivePath.Equals(dll.EffectivePath, StringComparison.OrdinalIgnoreCase)) ?? dll;
-                Logger.WriteVerbose("Processing assembly {0}.", dllToLoad.Path);
-                var assemblyTypes = ProcessAssembly(package.Id, package.Version.ToString(), dllToLoad.GetStream());
+                
+                Logger.WriteVerbose("Processing assembly {0}.", dll.Path);
+                var assemblyTypes = ProcessAssembly(package.Id, package.Version.ToString(), dllTtargetFrameworks, dll.GetStream());
                 if (assemblyTypes != null)
                 {
                     Logger.WriteVerbose("Found {0} public types.", assemblyTypes.Count());
-                    packageTypes.AddRange(assemblyTypes);
+                    MergeTypes(packageTypes, assemblyTypes);
                 }
             }
 
@@ -143,10 +142,34 @@ namespace Nuget.PackageIndex
 
             Logger.WriteVerbose("Storing type models to the index.");
             // add all types to index
-            result.AddRange(Engine.AddEntries(packageTypes, true));
+            result.AddRange(Engine.AddEntries(packageTypes.Values, true));
             Logger.WriteVerbose("Package indexing complete.");
 
             return result;
+        }
+
+        private void MergeTypes(Dictionary<string, TypeModel> packageTypes, IEnumerable<TypeModel> assemblyTypes)
+        {
+            foreach(var newType in assemblyTypes)
+            {
+                TypeModel existingType = null;
+                if (packageTypes.TryGetValue(newType.FullName, out existingType))
+                {
+                    foreach (var targetFramework in newType.TargetFrameworks)
+                    {
+                        // should we use a hashset instead of list here? There not so many targets: ~0 - 4 , 
+                        // not sure if we would win anything ... consider it for future perf improvements.
+                        if (existingType.TargetFrameworks.All(x => !x.Equals(targetFramework)))
+                        {
+                            existingType.TargetFrameworks.Add(targetFramework);
+                        }
+                    }
+                }
+                else
+                {
+                    packageTypes.Add(newType.FullName, newType);
+                }
+            }
         }
 
         public IList<PackageIndexError> RemovePackage(string packageName)
@@ -163,7 +186,7 @@ namespace Nuget.PackageIndex
             var errors = Engine.RemoveEntries(types, false);
 
             // remove package(s) from index
-            var packages = GetPackages(packageName);
+            var packages = GetPackagesInternal(packageName);
             errors.AddRange(Engine.RemoveEntries(packages, true)); // last one call optimize=true
 
             Logger.WriteVerbose("Package removed, '{0}' errors occured.", packageName, errors.Count());
@@ -171,17 +194,21 @@ namespace Nuget.PackageIndex
             return errors;
         }
 
-        public IList<PackageModel> GetPackages(string packageName)
+        private IList<PackageModel> GetPackagesInternal(string packageName)
         {
             return Engine.Search(new TermQuery(new Term(PackageModel.PackageNameField, packageName)), MaxTypesExpected)
                          .Select(x => new PackageModel(x)).ToList();
-
         }
 
-        public IList<TypeModel> GetTypes(string typeName)
+        public IList<PackageInfo> GetPackages(string packageName)
+        {
+            return GetPackagesInternal(packageName).Select(x => (PackageInfo)x).ToList();
+        }
+
+        public IList<TypeInfo> GetTypes(string typeName)
         {
             return Engine.Search(new TermQuery(new Term(TypeModel.TypeNameField, typeName)), MaxTypesExpected)
-                         .Select(x => new TypeModel(x)).ToList();
+                         .Select(x => (TypeInfo)new TypeModel(x)).ToList();
         }
 
         public IList<PackageIndexError> Clean()
@@ -198,11 +225,15 @@ namespace Nuget.PackageIndex
                          .Select(x => new TypeModel(x)).ToList();
         }
 
-        internal IList<TypeModel> ProcessAssembly(string packageId, string packageVersion, Stream assemblyStream)
+        internal IList<TypeModel> ProcessAssembly(string packageId, string packageVersion, IEnumerable<FrameworkName> targetFrameworks, Stream assemblyStream)
         {
             string assemblyName = "";
             try
             {
+                var targetFrameworkNames = targetFrameworks == null 
+                    ? new List<string>() 
+                    : targetFrameworks.Select(x => VersionUtility.GetShortFrameworkName(x));
+
                 var typeEntities = new List<TypeModel>();
 
                 var assemblyDefinition = AssemblyDefinition.ReadAssembly(assemblyStream);
@@ -214,14 +245,18 @@ namespace Nuget.PackageIndex
                         continue;
                     }
 
-                    typeEntities.Add(new TypeModel
+                    var newModel = new TypeModel
                     {
                         Name = type.Name,
                         FullName = type.FullName,
                         AssemblyName = assemblyName,
                         PackageName = packageId,
                         PackageVersion = packageVersion
-                    });
+                    };
+
+                    newModel.TargetFrameworks.AddRange(targetFrameworkNames);
+
+                    typeEntities.Add(newModel);
                 }
 
                 return typeEntities;

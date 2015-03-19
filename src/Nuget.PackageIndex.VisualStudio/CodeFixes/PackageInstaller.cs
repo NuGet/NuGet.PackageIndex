@@ -6,7 +6,7 @@ using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
 using Document = Microsoft.CodeAnalysis.Document;
 using NuGet.VisualStudio;
-using Nuget.PackageIndex.Models;
+using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 using Nuget.PackageIndex.Client.CodeFixes;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes
@@ -31,7 +31,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
             nugetInstallerEvents.PackageInstalled += OnPackageInstalled;
         }
 
-        public void InstallPackage(Workspace workspace, Document document, TypeModel typeModel, CancellationToken cancellationToken = default(CancellationToken))
+        public void InstallPackage(Workspace workspace, Document document, TypeInfo typeInfo, CancellationToken cancellationToken = default(CancellationToken))
         {
             ThreadHelper.JoinableTaskFactory.Run(async delegate {
                 // Switch to main thread
@@ -43,7 +43,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                     var installer = container.DefaultExportProvider.GetExportedValue<IVsPackageInstaller>();
                     var project = document.GetVsHierarchy(_serviceProvider).GetDTEProject();
 
-                    installer.InstallPackage(null, project, typeModel.PackageName, typeModel.PackageVersion, true);
+                    installer.InstallPackage(null, project, typeInfo.PackageName, typeInfo.PackageVersion, true);
                 }
                 catch (Exception e)
                 {

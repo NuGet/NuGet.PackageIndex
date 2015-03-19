@@ -138,6 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client\Analyzers\AddPackageDiagnosticAnalyzer.cs" />
+    <Compile Include="Client\Analyzers\ITargetFrameworkProvider.cs" />
     <Compile Include="Client\Analyzers\IProjectFilter.cs" />
     <Compile Include="Client\Analyzers\IIdentifierFilter.cs" />
     <Compile Include="Client\Analyzers\UnknownIdentifierDiagnosticAnalyzerBase.cs" />
@@ -157,6 +158,8 @@
     <Compile Include="Logging\ILogProvider.cs" />
     <Compile Include="Logging\LogFactory.cs" />
     <Compile Include="Logging\LogLevel.cs" />
+    <Compile Include="Models\PackageInfo.cs" />
+    <Compile Include="Models\TypeInfo.cs" />
     <Compile Include="PackageIndexFactory.cs" />
     <Compile Include="IPackageIndexFactory.cs" />
     <Compile Include="IRemotePackageIndex.cs" />
