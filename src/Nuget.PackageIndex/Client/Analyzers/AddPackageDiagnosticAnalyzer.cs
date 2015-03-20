@@ -22,6 +22,11 @@ namespace Nuget.PackageIndex.Client.Analyzers
         where TQualifiedNameSyntax : SyntaxNode
         where TIdentifierNameSyntax : SyntaxNode
     {
+        // we want to limit number of suggsted packages, to avoid rare cases when user had 
+        // too many packages with the same type (since it would create super long list of suggestions,
+        // which would be not that usable anyway).
+        internal const int MaxPackageSuggestions = 5;
+
         private readonly IPackageSearcher _packageSearcher;
         private readonly ITargetFrameworkProvider _targetFrameworkProvider;
 
@@ -68,59 +73,9 @@ namespace Nuget.PackageIndex.Client.Analyzers
                 return null;
             }
 
-            // Check if project supports packages' target frameworks.
-            // Note: if _targetFrameworkProvider returns null or empty list it means that project type
-            // did not support discovery of target frameworks and thus we default to display all available
-            // packages for discoverability purpose (this whole feature is about discoverability). In this case
-            // we let user to figure out what he wants to do with unsupported packages, we at least show them.
-            List<TypeInfo> supportedPackages;
             var projectTargetFrameworks = _targetFrameworkProvider.GetTargetFrameworks(node.GetLocation().SourceTree.FilePath);
-            if (projectTargetFrameworks != null && projectTargetFrameworks.Any())
-            {
-                // if project target frameworks are provided, try to filter
-                supportedPackages = new List<TypeInfo>();
-                foreach (var packageInfo in packagesWithGivenType)
-                {
-                    if (SupportsProjectTargetFrameworks(packageInfo, projectTargetFrameworks))
-                    {
-                        supportedPackages.Add(packageInfo);
-                    }
-                }
-            }
-            else
-            {
-                // if project did not provide target frameworks to us, show all packages with requested type
-                supportedPackages = new List<TypeInfo>(packagesWithGivenType);
-            }
 
-            return GetFriendlyPackagesString(supportedPackages);
-        }
-
-        private bool SupportsProjectTargetFrameworks(TypeInfo typeInfo, IEnumerable<string> projectTargetFrameworks)
-        {
-            // if we find at least any framework in package that current project supports,
-            // we show this package to user.
-            if (typeInfo.TargetFrameworks == null || !typeInfo.TargetFrameworks.Any())
-            {
-                // In this case package did not specify any target frameworks and we follow our default 
-                // behavior and display as much as possible to the user
-                return true;
-            }
-            else
-            {
-                var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
-                foreach (var projectFramework in projectTargetFrameworks)
-                {
-                    var projectFrameworkName = VersionUtility.ParseFrameworkName(projectFramework);
-                    if (VersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
-                    {
-                        // if at least any project target framework supports package - display it
-                        return true;
-                    }
-                }
-            }
-
-            return false;
+            return GetFriendlyPackagesString(TargetFrameworkHelper.GetSupportedPackages(packagesWithGivenType, projectTargetFrameworks).Take(MaxPackageSuggestions));
         }
 
         private IEnumerable<string> GetFriendlyPackagesString(IEnumerable<TypeInfo> types)
@@ -128,7 +83,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
             foreach (var t in types)
             {
                 var targetFrameworks = string.Join(";", t.TargetFrameworks.Select(x => GetFrameworkFriendlyName(x)));
-                yield return string.Format(FriendlyMessageFormat, string.Format("{0}, {1} {2}, Supported frameworks: {3}", t.FullName, t.PackageName, t.PackageVersion, targetFrameworks));
+                yield return string.Format(FriendlyMessageFormat, t.FullName, t.PackageName, t.PackageVersion, targetFrameworks);
             }
         }
 
@@ -152,7 +107,6 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
         #region Abstract methods and properties
 
-        // must have 1 format placeholder {0}
         protected abstract string FriendlyMessageFormat { get; }
         protected abstract IProjectFilter GetProjectFilter();
 

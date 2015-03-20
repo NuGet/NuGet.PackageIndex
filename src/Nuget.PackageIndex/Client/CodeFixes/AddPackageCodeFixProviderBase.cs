@@ -15,23 +15,30 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     /// </summary>
     public abstract partial class AddPackageCodeFixProviderBase : CodeFixProvider
     {
+        // we want to limit number of suggsted packages, to avoid rare cases when user had 
+        // too many packages with the same type (since it would create super long list of suggestions,
+        // which would be not that usable anyway).
+        internal const int MaxPackageSuggestions = 5;
+
         private readonly IPackageInstaller _packageInstaller;
         private readonly IPackageSearcher _packageSearcher;
+        private readonly ITargetFrameworkProvider _targetFrameworkProvider;
 
-        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller)
-            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)))
+        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, ITargetFrameworkProvider targetFrameworkProvider)
+            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)), targetFrameworkProvider)
         {
         }
 
-        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, ILog logger)
-            : this(packageInstaller, new PackageSearcher(logger))
+        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, ILog logger, ITargetFrameworkProvider targetFrameworkProvider)
+            : this(packageInstaller, new PackageSearcher(logger), targetFrameworkProvider)
         {
         }
 
-        internal AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, IPackageSearcher packageSearcher)
+        internal AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, IPackageSearcher packageSearcher, ITargetFrameworkProvider targetFrameworkProvider)
         {
             _packageInstaller = packageInstaller;
             _packageSearcher = packageSearcher;
+            _targetFrameworkProvider = targetFrameworkProvider;
         }
 
 #if RC
@@ -67,9 +74,12 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             {
                 if (CanAddImport(node, cancellationToken))
                 {
-                    var typeName = node.ToString();
-                    var packagesWithGivenType =_packageSearcher.Search(typeName);
-                    foreach(var typeInfo in packagesWithGivenType)
+                    var typeName = node.ToString();                    
+                    var projectTargetFrameworks = _targetFrameworkProvider.GetTargetFrameworks(document.FilePath);
+                    var packagesWithGivenType = TargetFrameworkHelper.GetSupportedPackages(_packageSearcher.Search(typeName), projectTargetFrameworks)
+                                                    .Take(MaxPackageSuggestions);
+
+                    foreach (var typeInfo in packagesWithGivenType)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 

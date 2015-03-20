@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.ComponentModelHost;
-using Nuget.PackageIndex.Client.Analyzers;
+using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
@@ -12,21 +12,43 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     /// class in Nuget.PackageIndex assembly which knows nothing about VS, thus we needed 
     /// to  abstract it out.
     /// </summary>
-    public class TargetFrameworkProvider : ITargetFrameworkProvider
+    internal sealed class TargetFrameworkProvider : ITargetFrameworkProvider
     {
+        private static ITargetFrameworkProvider _instance;
+        public static ITargetFrameworkProvider Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new TargetFrameworkProvider();
+                }
+
+                return _instance;
+            }
+        }
+
+        private TargetFrameworkProvider()
+        {
+        }
+
+        private object _lock = new object();
         private IProjectTargetFrameworkProviderExporter _providersExporter;
 
         public IEnumerable<string> GetTargetFrameworks(string filePath)
         {
             try
             {
-                if (_providersExporter == null)
+                lock(_lock)
                 {
-                    var container = ServiceProvider.GlobalProvider.GetService<IComponentModel, SComponentModel>();
-                    _providersExporter = container.DefaultExportProvider.GetExportedValue<IProjectTargetFrameworkProviderExporter>();
-                }
+                    if (_providersExporter == null)
+                    {
+                        var container = ServiceProvider.GlobalProvider.GetService<IComponentModel, SComponentModel>();
+                        _providersExporter = container.DefaultExportProvider.GetExportedValue<IProjectTargetFrameworkProviderExporter>();
+                    }
 
-                return _providersExporter.GetTargetFrameworks(filePath);
+                    return _providersExporter.GetTargetFrameworks(filePath);
+                }
             }
             catch (Exception e)
             {

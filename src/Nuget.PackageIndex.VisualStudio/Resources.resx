@@ -121,7 +121,7 @@
     <value>Syntax</value>
   </data>
   <data name="AddPackageDiagnosticFriendlyMessageFormat" xml:space="preserve">
-    <value>Missing package suggestion: {0}</value>
+    <value>Missing package suggestion: {0}, {1} {2}, Supported frameworks: {3}</value>
   </data>
   <data name="AddPackageDiagnosticTitle" xml:space="preserve">
     <value>Package is missing</value>

@@ -24,7 +24,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
 
         [ImportingConstructor]
         public CSharpAddPackageCodeFixProvider([Import]SVsServiceProvider serviceProvider)
-            : base(new PackageInstaller(serviceProvider))
+            : base(new PackageInstaller(serviceProvider), TargetFrameworkProvider.Instance)
         {
         }
 

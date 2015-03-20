@@ -3,15 +3,18 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.Versioning;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
+using Microsoft.CodeAnalysis;
 using NuGet;
 using Lucene.Net.Analysis;
 using Lucene.Net.Search;
 using Lucene.Net.Index;
-using Mono.Cecil;
 using LuceneDirectory = Lucene.Net.Store.Directory;
 using Nuget.PackageIndex.Engine;
 using Nuget.PackageIndex.Models;
 using Nuget.PackageIndex.Logging;
+using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 
 namespace Nuget.PackageIndex
 {
@@ -30,8 +33,6 @@ namespace Nuget.PackageIndex
                 if (_logger == null)
                 {
                     // if no logger specified - just create silent default logger
-                    //var factory = new LoggerFactory();
-                    //_logger = factory.Create(typeof(LocalPackageIndex).FullName);
                     _logger = new LogFactory(LogLevel.Quiet);
                 }
 
@@ -148,30 +149,6 @@ namespace Nuget.PackageIndex
             return result;
         }
 
-        private void MergeTypes(Dictionary<string, TypeModel> packageTypes, IEnumerable<TypeModel> assemblyTypes)
-        {
-            foreach(var newType in assemblyTypes)
-            {
-                TypeModel existingType = null;
-                if (packageTypes.TryGetValue(newType.FullName, out existingType))
-                {
-                    foreach (var targetFramework in newType.TargetFrameworks)
-                    {
-                        // should we use a hashset instead of list here? There not so many targets: ~0 - 4 , 
-                        // not sure if we would win anything ... consider it for future perf improvements.
-                        if (existingType.TargetFrameworks.All(x => !x.Equals(targetFramework)))
-                        {
-                            existingType.TargetFrameworks.Add(targetFramework);
-                        }
-                    }
-                }
-                else
-                {
-                    packageTypes.Add(newType.FullName, newType);
-                }
-            }
-        }
-
         public IList<PackageIndexError> RemovePackage(string packageName)
         {
             if (string.IsNullOrEmpty(packageName))
@@ -218,6 +195,29 @@ namespace Nuget.PackageIndex
 
         #endregion 
 
+        private void MergeTypes(Dictionary<string, TypeModel> packageTypes, IEnumerable<TypeModel> assemblyTypes)
+        {
+            foreach (var newType in assemblyTypes)
+            {
+                TypeModel existingType = null;
+                if (packageTypes.TryGetValue(newType.FullName, out existingType))
+                {
+                    foreach (var targetFramework in newType.TargetFrameworks)
+                    {
+                        // should we use a hashset instead of list here? There not so many targets: ~0 - 4 , 
+                        // not sure if we would win anything ... consider it for future perf improvements.
+                        if (existingType.TargetFrameworks.All(x => !x.Equals(targetFramework)))
+                        {
+                            existingType.TargetFrameworks.Add(targetFramework);
+                        }
+                    }
+                }
+                else
+                {
+                    packageTypes.Add(newType.FullName, newType);
+                }
+            }
+        }
 
         private IList<TypeModel> GetTypesInPackage(string packageName)
         {
@@ -225,41 +225,60 @@ namespace Nuget.PackageIndex
                          .Select(x => new TypeModel(x)).ToList();
         }
 
-        internal IList<TypeModel> ProcessAssembly(string packageId, string packageVersion, IEnumerable<FrameworkName> targetFrameworks, Stream assemblyStream)
+        internal unsafe IList<TypeModel> ProcessAssembly(string packageId, string packageVersion, IEnumerable<FrameworkName> targetFrameworks, Stream assemblyStream)
         {
-            string assemblyName = "";
+            var assemblyName = "";
             try
             {
                 var targetFrameworkNames = targetFrameworks == null 
                     ? new List<string>() 
                     : targetFrameworks.Select(x => VersionUtility.GetShortFrameworkName(x));
 
-                var typeEntities = new List<TypeModel>();
-
-                var assemblyDefinition = AssemblyDefinition.ReadAssembly(assemblyStream);
-                assemblyName = assemblyDefinition.Name.Name;
-                foreach (var type in assemblyDefinition.MainModule.GetTypes())
+                using (var peReader = new PEReader(assemblyStream))
                 {
-                    if (!type.IsPublic)
+                    if (!peReader.HasMetadata)
                     {
-                        continue;
+                        return null;
                     }
 
-                    var newModel = new TypeModel
+                    var metadataBlock = peReader.GetMetadata();
+                    if (metadataBlock.Pointer == (byte*)IntPtr.Zero || metadataBlock.Length <= 0)
                     {
-                        Name = type.Name,
-                        FullName = type.FullName,
-                        AssemblyName = assemblyName,
-                        PackageName = packageId,
-                        PackageVersion = packageVersion
-                    };
+                        return null;
+                    }
 
-                    newModel.TargetFrameworks.AddRange(targetFrameworkNames);
+                    var reader = new MetadataReader(metadataBlock.Pointer, metadataBlock.Length);
 
-                    typeEntities.Add(newModel);
-                }
+                    assemblyName = reader.GetString(reader.GetModuleDefinition().Name);
+                    var typeHandlers = reader.TypeDefinitions;
+                    var typeEntities = new List<TypeModel>();
+                    foreach (var typeHandler in typeHandlers)
+                    {
+                        var typeDef = reader.GetTypeDefinition(typeHandler);
 
-                return typeEntities;
+                        if ((typeDef.Attributes & System.Reflection.TypeAttributes.Public) != System.Reflection.TypeAttributes.Public)
+                        {
+                            continue;
+                        }
+
+                        var typeName = reader.GetString(typeDef.Name);
+                        var typeNamespace = reader.GetString(typeDef.Namespace);
+
+                        var newModel = new TypeModel
+                        {
+                            Name = typeName,
+                            FullName = string.IsNullOrEmpty(typeNamespace) ? typeName : typeNamespace + "." + typeName,
+                            AssemblyName = assemblyName,
+                            PackageName = packageId,
+                            PackageVersion = packageVersion
+                        };
+
+                        newModel.TargetFrameworks.AddRange(targetFrameworkNames);
+
+                        typeEntities.Add(newModel);
+                    }
+                    return typeEntities;
+                }             
             }
             catch(Exception ex)
             {

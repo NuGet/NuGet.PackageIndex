@@ -2,6 +2,8 @@
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
+    public delegate void ProjectTargetFrameworkChanged(object sender, EnvDTE.Project project);
+
     /// <summary>
     /// Projects should Export this interface to provide target frameworks supported 
     /// by given DTE project. This is needed since different rpojec system types might have
@@ -12,5 +14,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     {
         bool SupportsProject(EnvDTE.Project project);
         IEnumerable<string> GetTargetFrameworks(EnvDTE.Project project);
+        event ProjectTargetFrameworkChanged TargetFrameworkChanged;
+        void RefreshTargetFrameworks(EnvDTE.Project project);
     }
 }

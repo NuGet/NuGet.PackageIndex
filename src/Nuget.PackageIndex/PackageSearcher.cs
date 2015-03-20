@@ -20,13 +20,13 @@ namespace Nuget.PackageIndex
 
         public IEnumerable<TypeInfo> Search(string typeName)
         {
+            IEnumerable<TypeInfo> result = null;
             var localIndex = _indexFactory.GetLocalIndex();
-            if (localIndex == null)
+            if (localIndex != null)
             {
-                return null;
+                result = localIndex.GetTypes(typeName);
             }
 
-            var result = localIndex.GetTypes(typeName);
             if (result == null)
             {
                 var remoteIndex = _indexFactory.GetRemoteIndex();

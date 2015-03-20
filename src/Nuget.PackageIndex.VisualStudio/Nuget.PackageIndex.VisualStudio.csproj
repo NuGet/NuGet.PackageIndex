@@ -152,6 +152,7 @@
     <Compile Include="Analyzers\IdentifierFilters\UsingIdentifierFilter.cs" />
     <Compile Include="Analyzers\ProjectTargetFrameworkProviderExporter.cs" />
     <Compile Include="Analyzers\IProjectTargetFrameworkProviderExporter.cs" />
+    <Compile Include="Analyzers\FrameworkCacheItem.cs" />
     <Compile Include="Analyzers\TargetFrameworkProvider.cs" />
     <Compile Include="Analyzers\IProjectTargetFrameworkProvider.cs" />
     <Compile Include="ProjectKFilter.cs" />

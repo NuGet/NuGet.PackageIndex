@@ -27,7 +27,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             : base(new [] // filters can be hardcoded here untill we need an extensibility
                           {
                               new UsingIdentifierFilter()
-                          }, new TargetFrameworkProvider()) // TODO add logger that prints to Package manager console
+                          }, TargetFrameworkProvider.Instance) // TODO add logger that prints to Package manager console
         {
             _projectFilter = new ProjectKFilter();
         }

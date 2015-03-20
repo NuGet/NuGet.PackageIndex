@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Nuget.PackageIndex.Client.Analyzers
+namespace Nuget.PackageIndex.Client
 {
     /// <summary>
     /// Given a current file, returns a list of target frameworks for project 
