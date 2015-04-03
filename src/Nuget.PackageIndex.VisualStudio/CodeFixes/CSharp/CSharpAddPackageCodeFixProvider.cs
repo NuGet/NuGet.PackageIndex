@@ -28,12 +28,6 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
         {
         }
 
-#if RC
-        public sealed override ImmutableArray<string> GetFixableDiagnosticIds()
-        {
-            return ImmutableArray.Create(CSharpAddPackageDiagnosticAnalyzer.DiagnosticId);
-        }
-#else
         public override ImmutableArray<string> FixableDiagnosticIds
         {
             get
@@ -41,7 +35,6 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
                 return ImmutableArray.Create(CSharpAddPackageDiagnosticAnalyzer.DiagnosticId);
             }
         }
-#endif
 
         protected override string ActionTitle
         {

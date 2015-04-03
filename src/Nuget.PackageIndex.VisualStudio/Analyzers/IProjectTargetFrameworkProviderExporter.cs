@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
@@ -9,6 +10,6 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     /// </summary>
     internal interface IProjectTargetFrameworkProviderExporter
     {
-        IEnumerable<string> GetTargetFrameworks(string filePath);
+        IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(string filePath);
     }
 }

@@ -59,7 +59,6 @@ namespace Nuget.PackageIndex.Client.Analyzers
         /// </summary>
         protected override IEnumerable<string> AnalyzeNode(TIdentifierNameSyntax node)
         {
-            // TODO remove this after RC
             var projectFilter = GetProjectFilter();
             if (!projectFilter.IsProjectSupported(node.GetLocation().SourceTree.FilePath))
             {
@@ -75,7 +74,14 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
             var projectTargetFrameworks = _targetFrameworkProvider.GetTargetFrameworks(node.GetLocation().SourceTree.FilePath);
 
-            return GetFriendlyPackagesString(TargetFrameworkHelper.GetSupportedPackages(packagesWithGivenType, projectTargetFrameworks).Take(MaxPackageSuggestions));
+            // Note: allowHigherVersions=true here since we want to show diagnostic message for type if it exists in some package 
+            // for discoverability (tooltip) but we would not supply a code fix if package already installed in the project with 
+            // any version, user needs to upgrade on his own.
+            // Note2: the problem here is that we don't know if type exist in older versions of the package or not and to store 
+            // all package versions in index might slow things down. If we receive feedback that we need ot be more smart here 
+            // we should consider adding all package versions to the local index.
+            return GetFriendlyPackagesString(TargetFrameworkHelper.GetSupportedPackages(packagesWithGivenType, projectTargetFrameworks, allowHigherVersions:true)
+                .Take(MaxPackageSuggestions));
         }
 
         private IEnumerable<string> GetFriendlyPackagesString(IEnumerable<TypeInfo> types)

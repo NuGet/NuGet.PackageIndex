@@ -10,6 +10,7 @@ namespace Nuget.PackageIndex
     /// </summary>
     public interface ILocalPackageIndex : IPackageIndex
     {
+        bool IsLocked { get; }
         bool IndexExists { get; }
         DateTime LastWriteTime { get; }
         IList<PackageIndexError> AddPackage(ZipPackage package, bool force = false);

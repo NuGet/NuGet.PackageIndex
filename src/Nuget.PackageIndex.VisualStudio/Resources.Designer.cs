@@ -70,7 +70,7 @@ namespace Nuget.PackageIndex.VisualStudio {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Missing package suggestion: {0}, {1} {2}, Supported frameworks: {3}.
+        ///   Looks up a localized string similar to Type {0} exists in the package: {1} {2}, Supported frameworks: {3}.
         /// </summary>
         internal static string AddPackageDiagnosticFriendlyMessageFormat {
             get {

@@ -7,7 +7,7 @@ using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
-using System.IO;
+using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
@@ -30,7 +30,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         /// Stores file and it's corresponding unique project name
         /// </summary>
         private Dictionary<string, string> FilesCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        private Dictionary<string, IEnumerable<string>> ProjectFrameworksCache = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, IEnumerable<TargetFrameworkMetadata>> ProjectFrameworksCache = new Dictionary<string, IEnumerable<TargetFrameworkMetadata>>(StringComparer.OrdinalIgnoreCase);
         private bool _disposed;
         private SolutionEvents _solutionEvents;
 
@@ -50,7 +50,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             if (events != null)
             {
                 _solutionEvents = events.SolutionEvents;
-                Debug.Assert(events != null, "Cannot get SolutionEvents");
+                Debug.Assert(_solutionEvents != null, "Cannot get SolutionEvents");
 
                 // clear all cache if solution closed.
                 _solutionEvents.AfterClosing += OnAfterSolutionClosing;
@@ -70,9 +70,9 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         /// </summary>
         /// <param name="filePath">Path to a code file being analyzed</param>
         /// <returns></returns>
-        public IEnumerable<string> GetTargetFrameworks(string filePath)
+        public IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(string filePath)
         {
-            IEnumerable<string> resultFrameworks = null;
+            IEnumerable<TargetFrameworkMetadata> resultFrameworks = null;
             string uniqueProjectName = null;
 
             // try to get framework info for a given file from cache

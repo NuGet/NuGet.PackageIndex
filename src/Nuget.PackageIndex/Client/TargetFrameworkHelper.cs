@@ -10,7 +10,9 @@ namespace Nuget.PackageIndex.Client
     /// </summary>
     internal static class TargetFrameworkHelper
     {
-        public static IEnumerable<TypeInfo> GetSupportedPackages(IEnumerable<TypeInfo> packagesWithGivenType, IEnumerable<string> projectTargetFrameworks)
+        public static IEnumerable<TypeInfo> GetSupportedPackages(IEnumerable<TypeInfo> packagesWithGivenType, 
+                                                                 IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks,
+                                                                 bool allowHigherVersions)
         {
             // Check if project supports packages' target frameworks.
             // Note: if projectTargetFrameworks is null or empty list it means that project type
@@ -25,7 +27,8 @@ namespace Nuget.PackageIndex.Client
                 supportedPackages = new List<TypeInfo>();
                 foreach (var packageInfo in packagesWithGivenType)
                 {
-                    if (SupportsProjectTargetFrameworks(packageInfo, projectTargetFrameworks))
+                    if (SupportsProjectTargetFrameworks(packageInfo, projectTargetFrameworks)
+                        && !PackageExistsInTheProject(packageInfo, projectTargetFrameworks, allowHigherVersions))
                     {
                         supportedPackages.Add(packageInfo);
                     }
@@ -40,7 +43,7 @@ namespace Nuget.PackageIndex.Client
             return supportedPackages;
         }
 
-        private static bool SupportsProjectTargetFrameworks(TypeInfo typeInfo, IEnumerable<string> projectTargetFrameworks)
+        private static bool SupportsProjectTargetFrameworks(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks)
         {
             // if we find at least any framework in package that current project supports,
             // we show this package to user.
@@ -55,7 +58,7 @@ namespace Nuget.PackageIndex.Client
                 var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
                 foreach (var projectFramework in projectTargetFrameworks)
                 {
-                    var projectFrameworkName = VersionUtility.ParseFrameworkName(projectFramework);
+                    var projectFrameworkName = VersionUtility.ParseFrameworkName(projectFramework.TargetFrameworkShortName);
                     if (VersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
                     {
                         // if at least any project target framework supports package - display it
@@ -65,6 +68,25 @@ namespace Nuget.PackageIndex.Client
             }
 
             return false;
+        }
+
+        private static bool PackageExistsInTheProject(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks, bool allowHigherVersions)
+        {
+            if (allowHigherVersions)
+            {
+                var packageVersion = new SemanticVersion(typeInfo.PackageVersion);
+                return projectTargetFrameworks.Any(x => x.Packages.Any(p =>
+                        {
+                            var projecsPackageVersion = new SemanticVersion(p.Value);
+                            // if project has package with given name and version less than in index
+                            return p.Key.Equals(typeInfo.PackageName) && projecsPackageVersion < packageVersion;
+                        }
+                ));
+            }
+            else
+            {
+               return projectTargetFrameworks.Any(x => x.Packages.Any(p => p.Key.Equals(typeInfo.PackageName)));
+            }
         }
     }
 }

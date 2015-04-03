@@ -62,7 +62,15 @@ namespace Nuget.PackageIndex
         protected abstract IPackageSearchEngine Engine { get; }
         protected abstract DateTime GetLastWriteTime();
 
-        #region IPackageIndex
+        #region ILocalPackageIndex
+
+        public bool IsLocked
+        {
+            get
+            {
+                return IndexWriter.IsLocked(IndexDirectory);
+            }
+        }
 
         public bool IndexExists
         {

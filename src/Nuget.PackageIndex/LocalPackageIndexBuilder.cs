@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using ILog = Nuget.PackageIndex.Logging.ILog;
 using Nuget.PackageIndex.Engine;
 
@@ -21,6 +22,7 @@ namespace Nuget.PackageIndex
         private const string PackageSourcesEnvironmentVariable = "NugetLocalPackageSources";
         private List<string> DefaultSources = new List<string>()
             {
+                @"%ProgramFiles(x86)%\Microsoft Web Tools\DNU",
                 @"%ProgramFiles(x86)%\Microsoft Web Tools\Packages",
                 @"%UserProfile%\.dnx\packages"
             };
@@ -84,34 +86,42 @@ namespace Nuget.PackageIndex
             }
         }
 
-        public LocalPackageIndexBuilderResult Build(bool newOnly = false)
+        public Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false)
         {
-            _logger.WriteInformation("Started building index.");
-            var stopWatch = Stopwatch.StartNew();
-
-            // now get all known packages and add them to index again
-            if (newOnly)
+            return Task.Run(() =>
             {
-                _logger.WriteVerbose("Looking only for new packages...");
-            }
-            else
-            {
-                _logger.WriteVerbose("Looking all existing packages...");
-            }
+                // Fire and forget. While index is building, it will be locked from
+                // other write attempts. In meanwhile readers would just not be able 
+                // to find any types, but will be still operatable (when an instance of 
+                // a reader is created it can return data from the snapshot before next
+                // write happened).
+                _logger.WriteInformation("Started building index.");
+                var stopWatch = Stopwatch.StartNew();
 
-            var packagePaths = GetPackages(newOnly).ToList();
-            _logger.WriteVerbose("Found {0} packages to be added to the index.", packagePaths.Count());
-            bool success = true;
-            foreach (var nupkgFilePath in packagePaths)
-            {
-                var errors = AddPackageInternal(nupkgFilePath);
-                success &= (errors == null || !errors.Any());
-            }
+                // now get all known packages and add them to index again
+                if (newOnly)
+                {
+                    _logger.WriteVerbose("Looking only for new packages...");
+                }
+                else
+                {
+                    _logger.WriteVerbose("Looking all existing packages...");
+                }
 
-            stopWatch.Stop();
-            _logger.WriteInformation("Finished building index.");
+                var packagePaths = GetPackages(newOnly).ToList();
+                _logger.WriteVerbose("Found {0} packages to be added to the index.", packagePaths.Count());
+                bool success = true;
+                foreach (var nupkgFilePath in packagePaths)
+                {
+                    var errors = AddPackageInternal(nupkgFilePath);
+                    success &= (errors == null || !errors.Any());
+                }
 
-            return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };
+                stopWatch.Stop();
+                _logger.WriteInformation("Finished building index.");
+
+                return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };
+            }, PackageIndexFactory.LocalIndexCancellationTokenSource.Token);
         }
 
         public LocalPackageIndexBuilderResult Clean()
@@ -130,7 +140,7 @@ namespace Nuget.PackageIndex
         public LocalPackageIndexBuilderResult Rebuild()
         {
             var stopWatch = Stopwatch.StartNew();
-            bool success = Clean().Success && Build().Success;
+            bool success = Clean().Success && BuildAsync().Result.Success;
             stopWatch.Stop();
 
             return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };

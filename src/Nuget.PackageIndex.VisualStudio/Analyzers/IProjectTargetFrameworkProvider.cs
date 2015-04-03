@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
@@ -13,7 +14,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     public interface IProjectTargetFrameworkProvider
     {
         bool SupportsProject(EnvDTE.Project project);
-        IEnumerable<string> GetTargetFrameworks(EnvDTE.Project project);
+        IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(EnvDTE.Project project);
         event ProjectTargetFrameworkChanged TargetFrameworkChanged;
         void RefreshTargetFrameworks(EnvDTE.Project project);
     }

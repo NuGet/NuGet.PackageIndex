@@ -8,6 +8,6 @@ namespace Nuget.PackageIndex.Client
     /// </summary>
     public interface ITargetFrameworkProvider
     {
-        IEnumerable<string> GetTargetFrameworks(string filePath);
+        IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(string filePath);
     }
 }

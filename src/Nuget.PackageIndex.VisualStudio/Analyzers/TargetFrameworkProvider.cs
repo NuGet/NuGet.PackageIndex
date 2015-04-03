@@ -35,7 +35,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         private object _lock = new object();
         private IProjectTargetFrameworkProviderExporter _providersExporter;
 
-        public IEnumerable<string> GetTargetFrameworks(string filePath)
+        public IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(string filePath)
         {
             try
             {

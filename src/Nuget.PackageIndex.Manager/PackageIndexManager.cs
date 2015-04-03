@@ -72,7 +72,7 @@ namespace Nuget.PackageIndex.Manager
             switch (arguments.Action)
             {
                 case PackageIndexManagerAction.Build:
-                    result = builder.Build();
+                    result = builder.BuildAsync().Result;
                     break;
                 case PackageIndexManagerAction.Rebuild:
                     result = builder.Rebuild();

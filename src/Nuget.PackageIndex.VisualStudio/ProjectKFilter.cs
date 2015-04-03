@@ -3,7 +3,6 @@ using System.Diagnostics;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.Analyzers;
-using Nuget.PackageIndex.VisualStudio.CodeFixes;
 
 namespace Nuget.PackageIndex.VisualStudio
 {
@@ -22,7 +21,13 @@ namespace Nuget.PackageIndex.VisualStudio
                 try
                 {
                     var container = ServiceProvider.GlobalProvider.GetService<IComponentModel, SComponentModel>();
-                    var project = DocumentExtensions.GetVsHierarchy(filePath, ServiceProvider.GlobalProvider).GetDTEProject();
+                    var hierarchy = DocumentExtensions.GetVsHierarchy(filePath, ServiceProvider.GlobalProvider);
+                    if (hierarchy == null)
+                    {
+                        return false;
+                    }
+
+                    var project = hierarchy.GetDTEProject();
                     if (project == null)
                     {
                         return false;

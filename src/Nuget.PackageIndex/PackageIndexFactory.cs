@@ -1,4 +1,4 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
 using Nuget.PackageIndex.Logging;
 
 namespace Nuget.PackageIndex
@@ -9,6 +9,9 @@ namespace Nuget.PackageIndex
     /// </summary>
     public class PackageIndexFactory : IPackageIndexFactory
     {
+        // will be used to cancel all ongoing index update operations started asynchronously on background threads
+        public static CancellationTokenSource LocalIndexCancellationTokenSource = new CancellationTokenSource();
+
         private object _indexLock = new object();
 
         private ILog _logger;
@@ -24,6 +27,11 @@ namespace Nuget.PackageIndex
             _logger = logger;            
         }
 
+        public void InitializeLocalIndex()
+        {
+            GetLocalIndex(createIfNotExists:true);
+        }
+
         public ILocalPackageIndex GetLocalIndex(bool createIfNotExists = true)
         {
             lock(_indexLock)
@@ -32,18 +40,10 @@ namespace Nuget.PackageIndex
                 {
                     _index = new LocalPackageIndex(_logger);
 
-                    if (!_index.IndexExists && createIfNotExists)
+                    if (createIfNotExists)
                     {
-                        Task.Run(() =>
-                        {
-                        // Fire and forget. While index is building, it will be locked from
-                        // other write attempts. In meanwhile readers would just not be able 
-                        // to find any types, but will be still operatable (when an instance of 
-                        // a reader is created it can return data from the snapshot before next
-                        // write happened).
                         var builder = new LocalPackageIndexBuilder(_index, _logger);
-                            builder.Build();
-                        }).ConfigureAwait(false);
+                        builder.BuildAsync(); // don't await - fire and forget
                     }
                 }
 

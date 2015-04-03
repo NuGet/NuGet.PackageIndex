@@ -24,12 +24,13 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         private readonly IProjectFilter _projectFilter;
 
         public CSharpAddPackageDiagnosticAnalyzer()
-            : base(new [] // filters can be hardcoded here untill we need an extensibility
+            : base(new [] // filters can be hardcoded here until we need an extensibility
                           {
                               new UsingIdentifierFilter()
                           }, TargetFrameworkProvider.Instance) // TODO add logger that prints to Package manager console
         {
             _projectFilter = new ProjectKFilter();
+            VsServices.Instance.Initialize(); // sign up for IDE wide (shutdown for example)  events 
         }
 
         protected override ImmutableArray<SyntaxKind> SyntaxKindsOfInterest

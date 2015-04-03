@@ -3,7 +3,6 @@ using Lucene.Net.Store;
 using LuceneDirectory = Lucene.Net.Store.Directory;
 using Nuget.PackageIndex.Logging;
 using Nuget.PackageIndex.Engine;
-using System.Linq;
 
 namespace Nuget.PackageIndex
 {

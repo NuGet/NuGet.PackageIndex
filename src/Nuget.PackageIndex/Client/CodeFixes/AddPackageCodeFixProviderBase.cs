@@ -41,11 +41,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             _targetFrameworkProvider = targetFrameworkProvider;
         }
 
-#if RC
-        public sealed override async Task ComputeFixesAsync(CodeFixContext context)
-#else
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
-#endif
         {
             var document = context.Document;
             var span = context.Span;
@@ -76,7 +72,10 @@ namespace Nuget.PackageIndex.Client.CodeFixes
                 {
                     var typeName = node.ToString();                    
                     var projectTargetFrameworks = _targetFrameworkProvider.GetTargetFrameworks(document.FilePath);
-                    var packagesWithGivenType = TargetFrameworkHelper.GetSupportedPackages(_packageSearcher.Search(typeName), projectTargetFrameworks)
+                    // Note: allowHigherVersions=false here since we don't want to provide code fix that adds another 
+                    // dependency for the same package but different version, user should upgrade it on his own when
+                    // see Diagnostic suggestion
+                    var packagesWithGivenType = TargetFrameworkHelper.GetSupportedPackages(_packageSearcher.Search(typeName), projectTargetFrameworks, allowHigherVersions:false)
                                                     .Take(MaxPackageSuggestions);
 
                     foreach (var typeInfo in packagesWithGivenType)
@@ -88,7 +87,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
                         {
                             var action = new AddPackageCodeAction(_packageInstaller, typeInfo, ActionTitle, 
                                             (c) => AddImportAsync(node, namespaceName, document, placeSystemNamespaceFirst, cancellationToken));
-                            context.RegisterFix(action, diagnostic);
+                            context.RegisterCodeFix(action, diagnostic);
                         }
                     }
                 }
