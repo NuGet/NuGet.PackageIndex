@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ILog = Nuget.PackageIndex.Logging.ILog;
 using Nuget.PackageIndex.Engine;
+using System.Threading;
 
 namespace Nuget.PackageIndex
 {
@@ -67,26 +68,34 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Getting packages from local folders that contain packages.
         /// </summary>
-        public IEnumerable<string> GetPackages(bool newOnly)
+        public IEnumerable<string> GetPackages(bool newOnly, CancellationToken cancellationToken = default(CancellationToken))
         {
             _logger.WriteVerbose("Checking packages at: {0}", string.Join(";", _packageSources));
 
+            var packages = new List<string>();
             foreach (var source in _packageSources)
             {
                 var nupkgFiles = Directory.GetFiles(source, "*.nupkg", SearchOption.AllDirectories);
                 foreach (var nupkgFile in nupkgFiles)
                 {
+                    if (cancellationToken != null && cancellationToken.IsCancellationRequested)
+                    {
+                        return null;
+                    }
+
                     if (newOnly && File.GetLastWriteTime(nupkgFile) <= _index.LastWriteTime)
                     {
                         continue;
                     }
 
-                    yield return nupkgFile;
+                    packages.Add(nupkgFile);
                 }
             }
+
+            return packages;
         }
 
-        public Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false)
+        public Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken))
         {
             return Task.Run(() =>
             {
@@ -113,6 +122,11 @@ namespace Nuget.PackageIndex
                 bool success = true;
                 foreach (var nupkgFilePath in packagePaths)
                 {
+                    if (cancellationToken != null && cancellationToken.IsCancellationRequested)
+                    {
+                        return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed }; ;
+                    }
+
                     var errors = AddPackageInternal(nupkgFilePath);
                     success &= (errors == null || !errors.Any());
                 }

@@ -29,7 +29,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         /// <summary>
         /// Stores file and it's corresponding unique project name
         /// </summary>
-        private Dictionary<string, string> FilesCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, string> FilesCache = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
         private Dictionary<string, IEnumerable<TargetFrameworkMetadata>> ProjectFrameworksCache = new Dictionary<string, IEnumerable<TargetFrameworkMetadata>>(StringComparer.OrdinalIgnoreCase);
         private bool _disposed;
         private SolutionEvents _solutionEvents;
@@ -54,6 +54,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
 
                 // clear all cache if solution closed.
                 _solutionEvents.AfterClosing += OnAfterSolutionClosing;
+                _solutionEvents.ProjectRemoved += OnProjectRemoved;
             }
 
             foreach(var provider in Providers)
@@ -73,13 +74,13 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         public IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(string filePath)
         {
             IEnumerable<TargetFrameworkMetadata> resultFrameworks = null;
-            string uniqueProjectName = null;
+            string projectFullPath = null;
 
             // try to get framework info for a given file from cache
             lock (_cacheLock)
             {
-                if (FilesCache.TryGetValue(filePath, out uniqueProjectName) 
-                    && ProjectFrameworksCache.TryGetValue(uniqueProjectName, out resultFrameworks))
+                if (FilesCache.TryGetValue(filePath, out projectFullPath) 
+                    && ProjectFrameworksCache.TryGetValue(projectFullPath, out resultFrameworks))
                 {
                     return resultFrameworks;
                 }
@@ -104,10 +105,10 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                         return;
                     }
 
-                    var provider = Providers.FirstOrDefault(x => x.SupportsProject(dteProject));
+                    var provider = Providers.FirstOrDefault(x => x.SupportsProject(dteProject.FullName));
                     if (provider != null)
                     {
-                        uniqueProjectName = dteProject.UniqueName;
+                        projectFullPath = dteProject.FullName;
                         resultFrameworks = provider.GetTargetFrameworks(dteProject);
                     }
                 }
@@ -121,39 +122,39 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             // add file and project frameworks to cache
             lock(_cacheLock)
             {
-                if (ProjectFrameworksCache.Keys.Contains(uniqueProjectName))
+                if (ProjectFrameworksCache.Keys.Contains(projectFullPath))
                 {
-                    ProjectFrameworksCache[uniqueProjectName] = resultFrameworks;
+                    ProjectFrameworksCache[projectFullPath] = resultFrameworks;
                 }
                 else
                 {
-                    ProjectFrameworksCache.Add(uniqueProjectName, resultFrameworks);
+                    ProjectFrameworksCache.Add(projectFullPath, resultFrameworks);
                 }
 
                 if (FilesCache.Keys.Contains(filePath))
                 {
-                    FilesCache[filePath] = uniqueProjectName;
+                    FilesCache[filePath] = projectFullPath;
                 }
                 else
                 {
-                    FilesCache.Add(filePath, uniqueProjectName);
+                    FilesCache.Add(filePath, projectFullPath);
                 }
             }
 
             return resultFrameworks;
         }
 
-        private void OnProjectTargetFrameworkChanged(object sender, EnvDTE.Project project)
+        private void OnProjectTargetFrameworkChanged(object sender, string projectFullPath)
         {
             lock (_cacheLock)
             {
                 // here we need to remove from cache files that belong to a given project
-                if (ProjectFrameworksCache.Keys.Contains(project.UniqueName))
+                if (ProjectFrameworksCache.Keys.Contains(projectFullPath))
                 {
-                    ProjectFrameworksCache.Remove(project.UniqueName);
+                    ProjectFrameworksCache.Remove(projectFullPath);
                 }
 
-                var filesToRemove = FilesCache.Where(x => x.Value.Equals(project.UniqueName, StringComparison.InvariantCultureIgnoreCase)).Select(x => x.Key).ToList();
+                var filesToRemove = FilesCache.Where(x => x.Value.Equals(projectFullPath, StringComparison.InvariantCultureIgnoreCase)).Select(x => x.Key).ToList();
                 foreach (var file in filesToRemove)
                 {
                     FilesCache.Remove(file);
@@ -175,6 +176,16 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             ClearCache();
         }
 
+        private void OnProjectRemoved(Project project)
+        {
+            if (project == null)
+            {
+                return;
+            }
+
+            OnProjectTargetFrameworkChanged(this, project.FullName);
+        }
+
         ~ProjectTargetFrameworkProviderExporter()
         {
             Dispose();
@@ -189,6 +200,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                     if (_solutionEvents != null)
                     {
                         _solutionEvents.AfterClosing -= OnAfterSolutionClosing;
+                        _solutionEvents.ProjectRemoved -= OnProjectRemoved;
                     }
 
                     if (Providers != null)

@@ -24,7 +24,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <DefineConstants>TRACE;RC</DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -164,6 +164,6 @@
   </Target>
   -->
   <Target Name="AfterBuild">
-    <Exec Command="xcopy $(ProjectDir)$(OutputPath)$(AssemblyName).dll $(ProjectDir)..\..\artifacts\signed\*.* /Y /R" />
+    <Exec Command="xcopy $(ProjectDir)$(OutputPath)$(AssemblyName).* $(ProjectDir)..\..\artifacts\signed\*.* /Y /R" />
   </Target>
 </Project>
