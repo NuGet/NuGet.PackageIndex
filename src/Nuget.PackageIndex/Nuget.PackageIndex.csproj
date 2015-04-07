@@ -25,9 +25,10 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <DefineConstants>TRACE;RC</DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
@@ -122,6 +123,6 @@
   </Target>
   -->
   <Target Name="AfterBuild">
-    <Exec Command="xcopy $(ProjectDir)$(OutputPath)$(AssemblyName).dll $(ProjectDir)..\..\artifacts\signed\*.* /Y /R" />
+    <Exec Command="xcopy $(ProjectDir)$(OutputPath)$(AssemblyName).* $(ProjectDir)..\..\artifacts\signed\*.* /Y /R" />
   </Target>
 </Project>

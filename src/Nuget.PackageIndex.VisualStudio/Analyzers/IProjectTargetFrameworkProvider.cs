@@ -3,7 +3,7 @@ using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Analyzers
 {
-    public delegate void ProjectTargetFrameworkChanged(object sender, EnvDTE.Project project);
+    public delegate void ProjectTargetFrameworkChanged(object sender, string projectFullPath);
 
     /// <summary>
     /// Projects should Export this interface to provide target frameworks supported 
@@ -13,9 +13,9 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     /// </summary>
     public interface IProjectTargetFrameworkProvider
     {
-        bool SupportsProject(EnvDTE.Project project);
+        bool SupportsProject(string projectFullPath);
         IEnumerable<TargetFrameworkMetadata> GetTargetFrameworks(EnvDTE.Project project);
         event ProjectTargetFrameworkChanged TargetFrameworkChanged;
-        void RefreshTargetFrameworks(EnvDTE.Project project);
+        void RefreshTargetFrameworks(string projectFullPath);
     }
 }

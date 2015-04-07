@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nuget.PackageIndex
@@ -9,8 +10,8 @@ namespace Nuget.PackageIndex
     public interface ILocalPackageIndexBuilder
     {
         ILocalPackageIndex Index { get; }
-        IEnumerable<string> GetPackages(bool newOnly);
-        Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false);
+        IEnumerable<string> GetPackages(bool newOnly, CancellationToken cancellationToken = default(CancellationToken));
+        Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken));
         LocalPackageIndexBuilderResult Clean();
         LocalPackageIndexBuilderResult Rebuild();
         LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force = false);
