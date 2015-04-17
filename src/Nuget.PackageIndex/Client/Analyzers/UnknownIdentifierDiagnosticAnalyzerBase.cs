@@ -64,7 +64,9 @@ namespace Nuget.PackageIndex.Client.Analyzers
             }
 
             var identifierSymbolInfo = context.SemanticModel.GetSymbolInfo(identifierNameSyntaxNode);
-            if (identifierSymbolInfo.Symbol != null || identifierSymbolInfo.CandidateSymbols.Any())
+            if (identifierSymbolInfo.Symbol != null 
+                || identifierSymbolInfo.CandidateSymbols.Any()
+                || identifierSymbolInfo.CandidateReason == CandidateReason.LateBound)
             {
                 return;
             }
