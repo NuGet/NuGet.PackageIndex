@@ -1,49 +1,31 @@
-<Project DefaultTargets="Clean;Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Go" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <TargetFramework Condition=" '$(TargetFramework)' == '' ">aspnet50</TargetFramework>
-    <ILDASMPath>$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\ildasm.exe</ILDASMPath>
-    <ILASMPath>$(WinDir)\Microsoft.NET\Framework\v4.0.30319\ilasm.exe</ILASMPath>
-    <ArtifactsDir>$(MSBuildThisFileDirectory)..\artifacts</ArtifactsDir>    
-    <SignedArtifactsDir>$(ArtifactsDir)\signed</SignedArtifactsDir>
-    <SnkPath>$(MSBuildThisFileDirectory)..\FinalPublicKey.snk</SnkPath>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <SolutionRootDir>$(MSBuildProjectDirectory)\..</SolutionRootDir>    
+    <ArtifactsDir>$(MSBuildThisFileDirectory)..\artifacts</ArtifactsDir>
+    <ArtifactsSignedDir>$(MSBuildThisFileDirectory)..\artifacts\signed</ArtifactsSignedDir>
     <SrcDir>$(MSBuildThisFileDirectory)..\src</SrcDir>
-    <TestsDir>$(MSBuildThisFileDirectory)..\tests</TestsDir>
-    <ReferencesDir>$(MSBuildThisFileDirectory)..\references</ReferencesDir>
+    <TestsDir>$(MSBuildThisFileDirectory)..\tests</TestsDir>   
   </PropertyGroup>
 
-  <ItemGroup>
-    <AssembliesToSign Include="$(ArtifactsDir)\bin\Nuget.PackageIndex\$(Configuration)\$(TargetFramework)\Nuget.PackageIndex.dll"/>
-  </ItemGroup>
-
+  <Target Name="Go" DependsOnTargets="Clean;Build;RunTests" />
   <Target Name="Clean">
     <RemoveDir Directories="$(ArtifactsDir)" />
   </Target>
   
-  <Target Name="Build">
-    <ItemGroup>
-      <ProjectsToBuild Include="$(SrcDir)\Nuget.PackageIndex\Nuget.PackageIndex.kproj" />
-      <ProjectsToBuild Include="$(SrcDir)\Nuget.PackageIndex.VisualStudio\Nuget.PackageIndex.VisualStudio.csproj" />
-      <ProjectsToBuild Include="$(SrcDir)\Nuget.PackageIndex.Manager\Nuget.PackageIndex.Manager.kproj" />
-      <ProjectsToBuild Include="$(TestsDir)\Nuget.PackageIndex.Tests\Nuget.PackageIndex.Tests.kproj" />      
-    </ItemGroup>
-
-    <MSBuild Projects="@(ProjectsToBuild)"
+  <Target Name="Build" DependsOnTargets="IncrementVersion">    
+    <MSBuild Projects="$(SolutionRootDir)\Nuget.PackageIndex.sln"
              Targets="Build"
              Properties="Configuration=$(Configuration)" />
   </Target>
-  
-  <Target Name="PrepareSigning">
-    <MakeDir Directories="$(SignedArtifactsDir)" />
+
+  <Target Name="IncrementVersion">
+    
+
   </Target>
 
-  <Target Name="Sign" DependsOnTargets="PrepareSigning">
-    <!-- Disassemble asembly-->
-    <Exec Command="&quot;$(ILDASMPath)&quot; %(AssembliesToSign.Identity) /out:%(AssembliesToSign.Identity).il" />
-    <!-- delay sign and assemble back -->
-    <Exec Command="&quot;$(ILASMPath)&quot; %(AssembliesToSign.Identity).il /dll /resource=%(AssembliesToSign.Identity).res /key:$(SnkPath) /output=$(SignedArtifactsDir)\%(AssembliesToSign.FileName)%(AssembliesToSign.Extension)" />
-  </Target>
+  <Target Name="RunTests">
 
-  <Target Name="BuildAndSign" DependsOnTargets="Clean;Build;Sign" />
-   
+
+  </Target>
 </Project>
