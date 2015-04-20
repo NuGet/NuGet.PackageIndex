@@ -61,7 +61,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.VisualStudio.ComponentModelHost.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.OLE.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <Reference Include="Microsoft.VisualStudio.OLE.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\references\Microsoft.VisualStudio.OLE.Interop.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.VisualStudio.Shell.14.0, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.VisualStudio.Shell.14.0.dll</HintPath>
@@ -74,7 +77,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.VisualStudio.Shell.Interop.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Threading, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <Reference Include="Microsoft.VisualStudio.Threading, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\references\Microsoft.VisualStudio.Threading.dll</HintPath>
+    </Reference>
     <Reference Include="NuGet.Core, Version=2.8.60314.59, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\NuGet.Core.dll</HintPath>
@@ -144,7 +150,7 @@
     <Compile Include="CodeFixes\SourceTextExtensions.cs" />
     <Compile Include="..\..\GlobalAssemblyInfo.cs">
       <Link>Properties\GlobalAssemblyInfo.cs</Link>
-    </Compile>    
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\FinalPublicKey.snk" />
