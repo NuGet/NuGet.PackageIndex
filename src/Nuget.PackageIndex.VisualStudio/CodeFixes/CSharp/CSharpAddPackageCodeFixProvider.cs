@@ -10,6 +10,9 @@ using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.CodeFixes;
 using Nuget.PackageIndex.VisualStudio.Analyzers;
 using Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp.Utilities;
+using System.Linq;
+using System.IO;
+using System.Collections.Generic;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
 {
@@ -74,6 +77,14 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
             if (!string.IsNullOrEmpty(namespaceName))
             {
                 var root = await document.GetSyntaxRootAsync(cancellationToken);
+
+                var usings = root.DescendantNodes().Where(n => n is UsingDirectiveSyntax);
+                var newNamespaceUsing = string.Format("using {0};", namespaceName);
+                if (usings.Any(x => x.ToFullString().StartsWith(newNamespaceUsing)))
+                {
+                    return document;
+                }
+
                 var newUsingStatement = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(namespaceName));
                 var newRoot = ((CompilationUnitSyntax)root).AddUsingDirective(newUsingStatement, contextNode, specialCaseSystem);
 
