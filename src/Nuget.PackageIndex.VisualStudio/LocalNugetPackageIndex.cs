@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nuget.PackageIndex.VisualStudio
@@ -34,7 +35,7 @@ namespace Nuget.PackageIndex.VisualStudio
             }
             catch (Exception e)
             {
-                Debug.WriteLine(e.Message);
+                Debug.WriteLine(e.ToString());
             }
         }
 
@@ -48,7 +49,7 @@ namespace Nuget.PackageIndex.VisualStudio
             // sync at least one of them would do it and add all new packages to the index.
             var indexFactory = new PackageIndexFactory();
             var builder = indexFactory.GetLocalIndexBuilder();
-            _indexBuildTask = builder.BuildAsync(newOnly: builder.Index.IndexExists);
+            _indexBuildTask = builder.BuildAsync(newOnly: builder.Index.IndexExists, cancellationToken: CancellationToken.None);
         }
     }
 }

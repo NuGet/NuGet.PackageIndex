@@ -10,11 +10,11 @@ namespace Nuget.PackageIndex
     public interface ILocalPackageIndexBuilder
     {
         ILocalPackageIndex Index { get; }
-        IEnumerable<string> GetPackages(bool newOnly, CancellationToken cancellationToken = default(CancellationToken));
-        Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken));
+        IEnumerable<string> GetPackages(bool newOnly, CancellationToken cancellationToken);
+        Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly, CancellationToken cancellationToken);
         LocalPackageIndexBuilderResult Clean();
         LocalPackageIndexBuilderResult Rebuild();
-        LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force = false);
-        LocalPackageIndexBuilderResult RemovePackage(string packageName, bool force = false);
+        LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force);
+        LocalPackageIndexBuilderResult RemovePackage(string packageName, bool force);
     }
 }

@@ -53,7 +53,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             catch (Exception e)
             {
                 // by default show all packages if there is any exception - return null
-                Debug.Write(e.Message);
+                Debug.Write(e.ToString());
             }
             return null;
         }

@@ -1,7 +1,8 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Collections.Immutable;
 using System.Composition;
-using System.Collections.Immutable;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,9 +11,6 @@ using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.CodeFixes;
 using Nuget.PackageIndex.VisualStudio.Analyzers;
 using Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp.Utilities;
-using System.Linq;
-using System.IO;
-using System.Collections.Generic;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
 {
