@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using Microsoft.VisualStudio.ComponentModelHost;
-using Microsoft.VisualStudio.Shell;
 using EnvDTE;
 using EnvDTE80;
+using Microsoft.VisualStudio.ComponentModelHost;
+using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.Analyzers;
 
 namespace Nuget.PackageIndex.VisualStudio
@@ -14,15 +15,15 @@ namespace Nuget.PackageIndex.VisualStudio
     /// This filter is needed only until we enable Missing Package suggestions for all C# projects.
     /// For now we limit this feature only to ProjectK scenarios.
     /// </summary>
-    internal class ProjectKFilter : IProjectFilter
+    internal class DnxProjectFilter : IProjectFilter, IDisposable
     {
-        private Dictionary<string, string> FilesCache = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+        private ConcurrentDictionary<string, string> FilesCache = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private bool _disposed;
         private SolutionEvents _solutionEvents;
         private object _cacheLock = new object();
         private bool _solutionIsClosing;
 
-        public ProjectKFilter()
+        public DnxProjectFilter()
         {
             var container = ServiceProvider.GlobalProvider.GetService<IComponentModel, SComponentModel>();
 
@@ -84,23 +85,13 @@ namespace Nuget.PackageIndex.VisualStudio
                     // visible to the user, instead just dump into debugger output or to package
                     // manager console.
                     // TODO Package manager console?
-                    Debug.Write(string.Format("{0} \r\n {1}", e.Message, e.StackTrace));
+                    Debug.Write(e.ToString());
                 }
             });
 
             if (!string.IsNullOrEmpty(projectFullName))
             {
-                lock (_cacheLock)
-                {
-                    if (FilesCache.Keys.Contains(filePath))
-                    {
-                        FilesCache[filePath] = projectFullName;
-                    }
-                    else
-                    {
-                        FilesCache.Add(filePath, projectFullName);
-                    }
-                }
+                FilesCache.AddOrUpdate(filePath, (k) => projectFullName, (k, v) => projectFullName);
             }
 
             return IsProjectFileSupported(projectFullName);
@@ -118,17 +109,15 @@ namespace Nuget.PackageIndex.VisualStudio
                 return;
             }
 
-            lock(_cacheLock)
+            // remove files that belong to the project that was removed/renamed
+            projectFullPath = projectFullPath.ToLowerInvariant();
+            foreach (var kvp in FilesCache.ToList())
             {
-                // remove files that belong to the project that was removed/renamed
-                projectFullPath = projectFullPath.ToLowerInvariant();
-                foreach (var kvp in FilesCache.ToList())
+                // project paths in the cache arready in lower case
+                if (kvp.Value.Equals(projectFullPath))
                 {
-                    // project paths in the cache arready in lower case
-                    if (kvp.Value.Equals(projectFullPath))
-                    {
-                        FilesCache.Remove(kvp.Key);
-                    }
+                    string removedVal = string.Empty;
+                    FilesCache.TryRemove(kvp.Key, out removedVal);
                 }
             }
         }
@@ -145,6 +134,7 @@ namespace Nuget.PackageIndex.VisualStudio
 
         private void OnProjectRemoved(Project project)
         {
+            Debug.Assert(project != null, "Project passed to OnProjectRemoved DTE event was null.");
             if (project == null)
             {
                 return;
@@ -166,14 +156,17 @@ namespace Nuget.PackageIndex.VisualStudio
             ClearCache(oldName);
         }
 
-        ~ProjectKFilter()
-        {
-            Dispose();
-        }
+        #region IDisposable
 
         public void Dispose()
         {
-            if (!_disposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
             {
                 try
                 {
@@ -187,13 +180,13 @@ namespace Nuget.PackageIndex.VisualStudio
                 }
                 catch (Exception e)
                 {
-                    Debug.WriteLine(e.Message); // do nothing for now, log?                    
+                    Debug.WriteLine(e.ToString()); // do nothing for now, log?                    
                 }
 
                 _disposed = true;
             }
-
-            GC.SuppressFinalize(this);
         }
+
+        #endregion
     }
 }

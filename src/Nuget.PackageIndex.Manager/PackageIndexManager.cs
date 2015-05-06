@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Nuget.PackageIndex.Logging;
-using Nuget.PackageIndex.Models;
-using System.Threading.Tasks;
 
 namespace Nuget.PackageIndex.Manager
 {
@@ -72,7 +71,7 @@ namespace Nuget.PackageIndex.Manager
             switch (arguments.Action)
             {
                 case PackageIndexManagerAction.Build:
-                    result = builder.BuildAsync().Result;
+                    result = builder.BuildAsync(newOnly:false, cancellationToken: CancellationToken.None).Result;
                     break;
                 case PackageIndexManagerAction.Rebuild:
                     result = builder.Rebuild();
@@ -93,7 +92,7 @@ namespace Nuget.PackageIndex.Manager
                 case PackageIndexManagerAction.Remove:
                     if (!string.IsNullOrEmpty(arguments.Package))
                     {
-                        result = builder.RemovePackage(arguments.Package);
+                        result = builder.RemovePackage(packageName:arguments.Package, force: false);
                     }
                     else
                     {

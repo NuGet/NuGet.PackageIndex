@@ -29,7 +29,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         /// <summary>
         /// Stores file and it's corresponding unique project name
         /// </summary>
-        private Dictionary<string, string> FilesCache = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+        private Dictionary<string, string> FilesCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, IEnumerable<TargetFrameworkMetadata>> ProjectFrameworksCache = new Dictionary<string, IEnumerable<TargetFrameworkMetadata>>(StringComparer.OrdinalIgnoreCase);
         private bool _disposed;
         private SolutionEvents _solutionEvents;
@@ -115,7 +115,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                 catch (Exception e)
                 {
                     // Add to Package Manager console?
-                    Debug.Write(string.Format("{0}. Stack trace: {1}", e.Message, e.StackTrace));
+                    Debug.Write(e.ToString());
                 }
             });
 
@@ -154,7 +154,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                     ProjectFrameworksCache.Remove(projectFullPath);
                 }
 
-                var filesToRemove = FilesCache.Where(x => x.Value.Equals(projectFullPath, StringComparison.InvariantCultureIgnoreCase)).Select(x => x.Key).ToList();
+                var filesToRemove = FilesCache.Where(x => x.Value.Equals(projectFullPath, StringComparison.OrdinalIgnoreCase)).Select(x => x.Key).ToList();
                 foreach (var file in filesToRemove)
                 {
                     FilesCache.Remove(file);
@@ -186,14 +186,17 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             OnProjectTargetFrameworkChanged(this, project.FullName);
         }
 
-        ~ProjectTargetFrameworkProviderExporter()
-        {
-            Dispose();
-        }
+        #region IDisposable
 
         public void Dispose()
         {
-            if (!_disposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
             {
                 try
                 {
@@ -214,13 +217,13 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                 }
                 catch (Exception e)
                 {
-                    Debug.WriteLine(e.Message); // do nothing for now, log?                    
+                    Debug.WriteLine(e.ToString()); // do nothing for now, log?                    
                 }
 
                 _disposed = true;
             }
-
-            GC.SuppressFinalize(this);
         }
+
+        #endregion
     }
 }

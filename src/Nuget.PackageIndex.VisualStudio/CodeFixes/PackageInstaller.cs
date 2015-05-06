@@ -1,16 +1,16 @@
-﻿using System.Threading;
-using Microsoft.CodeAnalysis;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
-using Document = Microsoft.CodeAnalysis.Document;
+using Nuget.PackageIndex.Client.CodeFixes;
 using NuGet;
 using NuGet.VisualStudio;
-using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
-using Nuget.PackageIndex.Client.CodeFixes;
+using Document = Microsoft.CodeAnalysis.Document;
 using Task = System.Threading.Tasks.Task;
+using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes
 {
@@ -104,7 +104,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                     // visible to the user, instead just dump into debugger output or to package
                     // manager console.
                     // TODO Package manager console?
-                    Debug.Write(string.Format("{0} \r\n {1}", e.Message, e.StackTrace));
+                    Debug.Write(e.ToString());
                 }
             });
         }
@@ -121,7 +121,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                 // InvalidOperationException would mean package not found or other install error, 
                 // but for us actually any exception means success=false, so try next feed
                 success = false;
-                Debug.Write(string.Format("{0} \r\n {1}", ex.Message, ex.StackTrace));
+                Debug.Write(ex.ToString());
             }
 
             return success;
@@ -137,17 +137,20 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
             // sync at least one of them would do it and add all new packages to the index.
             var indexFactory = new PackageIndexFactory();
             var builder = indexFactory.GetLocalIndexBuilder();
-            builder.BuildAsync(newOnly: true);
+            builder.BuildAsync(newOnly: true, cancellationToken:CancellationToken.None);
         }
 
-        ~PackageInstaller()
-        {
-            Dispose();
-        }
+        #region IDisposable
 
         public void Dispose()
         {
-            if (!_disposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
             {
                 try
                 {
@@ -157,13 +160,13 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                 }
                 catch(Exception e)
                 {
-                    Debug.WriteLine(e.Message); // do nothing for now, log?                    
+                    Debug.WriteLine(e.ToString()); // do nothing for now, log?                    
                 }
 
                 _disposed = true;
             }
-
-            GC.SuppressFinalize(this);
         }
+
+        #endregion
     }
 }

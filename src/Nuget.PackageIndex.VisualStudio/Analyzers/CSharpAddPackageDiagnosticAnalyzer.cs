@@ -29,7 +29,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                               new UsingIdentifierFilter()
                           }, TargetFrameworkProvider.Instance) // TODO add logger that prints to Package manager console
         {
-            _projectFilter = new ProjectKFilter();
+            _projectFilter = new DnxProjectFilter();
             VsServices.Instance.Initialize(); // sign up for IDE wide (shutdown for example)  events 
         }
 

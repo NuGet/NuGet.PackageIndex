@@ -120,7 +120,7 @@
     <Compile Include="Analyzers\IProjectTargetFrameworkProvider.cs" />
     <Compile Include="CodeFixes\IProjectPackageInstaller.cs" />
     <Compile Include="VsServices.cs" />
-    <Compile Include="ProjectKFilter.cs" />
+    <Compile Include="DnxProjectFilter.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxTriviaExtensions.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\SyntaxListExtensions.cs" />
     <Compile Include="CodeFixes\CSharp\Utilities\TypeSyntaxComparer.cs" />

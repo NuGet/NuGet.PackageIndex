@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
-using Microsoft.VisualStudio.ComponentModelHost;
-using Microsoft.VisualStudio.Shell;
 using EnvDTE;
 using EnvDTE80;
+using Microsoft.VisualStudio.ComponentModelHost;
+using Microsoft.VisualStudio.Shell;
 
 namespace Nuget.PackageIndex.VisualStudio
 {
@@ -45,14 +45,17 @@ namespace Nuget.PackageIndex.VisualStudio
             PackageIndexFactory.LocalIndexCancellationTokenSource.Cancel();
         }
 
-        ~VsServices()
-        {
-            Dispose();
-        }
+        #region IDisposable
 
         public void Dispose()
         {
-            if (!_disposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
             {
                 try
                 {
@@ -63,13 +66,13 @@ namespace Nuget.PackageIndex.VisualStudio
                 }
                 catch (Exception e)
                 {
-                    Debug.WriteLine(e.Message); // do nothing for now, log?                    
+                    Debug.WriteLine(e.ToString()); // do nothing for now, log?                    
                 }
 
                 _disposed = true;
             }
-
-            GC.SuppressFinalize(this);
         }
+
+        #endregion
     }
 }
