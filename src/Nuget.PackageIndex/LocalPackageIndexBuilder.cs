@@ -1,13 +1,13 @@
-﻿using NuGet;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using ILog = Nuget.PackageIndex.Logging.ILog;
-using Nuget.PackageIndex.Engine;
 using System.Threading;
+using System.Threading.Tasks;
+using Nuget.PackageIndex.Engine;
+using NuGet;
+using ILog = Nuget.PackageIndex.Logging.ILog;
 
 namespace Nuget.PackageIndex
 {
