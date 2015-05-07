@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using EnvDTE;
@@ -17,7 +16,9 @@ namespace Nuget.PackageIndex.VisualStudio
     /// </summary>
     internal class DnxProjectFilter : IProjectFilter, IDisposable
     {
-        private ConcurrentDictionary<string, string> FilesCache = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, string> FilesCache = 
+                        new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         private bool _disposed;
         private SolutionEvents _solutionEvents;
         private object _cacheLock = new object();
@@ -27,22 +28,28 @@ namespace Nuget.PackageIndex.VisualStudio
         {
             var container = ServiceProvider.GlobalProvider.GetService<IComponentModel, SComponentModel>();
 
-            // Get the DTE
-            var dte = ServiceProvider.GlobalProvider.GetService(typeof(DTE)) as DTE;
-            Debug.Assert(dte != null, "Couldn't get the DTE. Crash incoming.");
-
-            var events = (Events2)dte.Events;
-            if (events != null)
+            ThreadHelper.JoinableTaskFactory.Run(async delegate
             {
-                _solutionEvents = events.SolutionEvents;
-                Debug.Assert(_solutionEvents != null, "Cannot get SolutionEvents");
+                // Switch to main thread
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-                // clear all cache if solution closed.
-                _solutionEvents.BeforeClosing += OnBeforeSolutionClosed;
-                _solutionEvents.Opened += OnSolutionOpened;
-                _solutionEvents.ProjectRemoved += OnProjectRemoved;
-                _solutionEvents.ProjectRenamed += OnProjectRenamed;
-            }
+                // Get the DTE
+                var dte = ServiceProvider.GlobalProvider.GetService(typeof(DTE)) as DTE;
+                Debug.Assert(dte != null, "Couldn't get the DTE. Crash incoming.");
+
+                var events = (Events2)dte.Events;
+                if (events != null)
+                {
+                    _solutionEvents = events.SolutionEvents;
+                    Debug.Assert(_solutionEvents != null, "Cannot get SolutionEvents");
+
+                    // clear all cache if solution closed.
+                    _solutionEvents.BeforeClosing += OnBeforeSolutionClosed;
+                    _solutionEvents.Opened += OnSolutionOpened;
+                    _solutionEvents.ProjectRemoved += OnProjectRemoved;
+                    _solutionEvents.ProjectRenamed += OnProjectRenamed;
+                }
+            });
         }
 
         public bool IsProjectSupported(string filePath)
