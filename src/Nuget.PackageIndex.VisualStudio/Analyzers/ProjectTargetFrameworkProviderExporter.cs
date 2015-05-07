@@ -20,7 +20,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     /// </summary>
     [Export(typeof(IProjectTargetFrameworkProviderExporter))]
     internal class ProjectTargetFrameworkProviderExporter : IProjectTargetFrameworkProviderExporter, IDisposable
-    {        
+    {
         private IEnumerable<IProjectTargetFrameworkProvider> Providers { get; set; }
 
         private SVsServiceProvider ServiceProvider { get; set; }
@@ -42,22 +42,27 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             var container = ServiceProvider.GetService<IComponentModel, SComponentModel>();
             Providers = container.DefaultExportProvider.GetExportedValues<IProjectTargetFrameworkProvider>();
 
-            // Get the DTE
-            var dte = ServiceProvider.GetService(typeof(DTE)) as DTE;
-            Debug.Assert(dte != null, "Couldn't get the DTE. Crash incoming.");
-
-            var events = (Events2)dte.Events;
-            if (events != null)
+            ThreadHelper.JoinableTaskFactory.Run(async delegate
             {
-                _solutionEvents = events.SolutionEvents;
-                Debug.Assert(_solutionEvents != null, "Cannot get SolutionEvents");
+                // Switch to main thread
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                // Get the DTE
+                var dte = ServiceProvider.GetService(typeof(DTE)) as DTE;
+                Debug.Assert(dte != null, "Couldn't get the DTE. Crash incoming.");
 
-                // clear all cache if solution closed.
-                _solutionEvents.AfterClosing += OnAfterSolutionClosing;
-                _solutionEvents.ProjectRemoved += OnProjectRemoved;
-            }
+                var events = (Events2)dte.Events;
+                if (events != null)
+                {
+                    _solutionEvents = events.SolutionEvents;
+                    Debug.Assert(_solutionEvents != null, "Cannot get SolutionEvents");
 
-            foreach(var provider in Providers)
+                    // clear all cache if solution closed.
+                    _solutionEvents.AfterClosing += OnAfterSolutionClosing;
+                    _solutionEvents.ProjectRemoved += OnProjectRemoved;
+                }
+            });
+
+            foreach (var provider in Providers)
             {
                 provider.TargetFrameworkChanged += OnProjectTargetFrameworkChanged;
             }
@@ -67,7 +72,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         /// TODO We need to have some events from providers to invalidate the cache if some project's 
         /// target frameworks are changed (in this case we just need to remove/update cache items that have 
         /// same DTE as changed project).
-       ///  For now cache will be invalidated when solution is closed and reopened.
+        ///  For now cache will be invalidated when solution is closed and reopened.
         /// </summary>
         /// <param name="filePath">Path to a code file being analyzed</param>
         /// <returns></returns>
@@ -79,7 +84,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             // try to get framework info for a given file from cache
             lock (_cacheLock)
             {
-                if (FilesCache.TryGetValue(filePath, out projectFullPath) 
+                if (FilesCache.TryGetValue(filePath, out projectFullPath)
                     && ProjectFrameworksCache.TryGetValue(projectFullPath, out resultFrameworks))
                 {
                     return resultFrameworks;
@@ -120,7 +125,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             });
 
             // add file and project frameworks to cache
-            lock(_cacheLock)
+            lock (_cacheLock)
             {
                 if (ProjectFrameworksCache.Keys.Contains(projectFullPath))
                 {
@@ -154,7 +159,9 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
                     ProjectFrameworksCache.Remove(projectFullPath);
                 }
 
-                var filesToRemove = FilesCache.Where(x => x.Value.Equals(projectFullPath, StringComparison.OrdinalIgnoreCase)).Select(x => x.Key).ToList();
+                var filesToRemove = FilesCache.Where(x => x.Value.Equals(projectFullPath, StringComparison.OrdinalIgnoreCase))
+                                              .Select(x => x.Key)
+                                              .ToList();
                 foreach (var file in filesToRemove)
                 {
                     FilesCache.Remove(file);
@@ -164,7 +171,7 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
 
         private void ClearCache()
         {
-            lock(_cacheLock)
+            lock (_cacheLock)
             {
                 ProjectFrameworksCache.Clear();
                 FilesCache.Clear();
