@@ -110,6 +110,10 @@ namespace Nuget.PackageIndex.Manager
                     {
                         DoQuery(() => { return builder.Index.GetPackages(arguments.Package).Select(x => (object)x).ToList(); });
                     }
+                    else if (!string.IsNullOrEmpty(arguments.Namespace))
+                    {
+                        DoQuery(() => { return builder.Index.GetNamespaces(arguments.Namespace).Select(x => (object)x).ToList(); });
+                    }
                     else
                     {
                         _consoleUI.WriteNormalLine(Resources.PackageOrTypeIsMissing);

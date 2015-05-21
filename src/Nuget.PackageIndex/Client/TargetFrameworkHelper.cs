@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.using System.Collections.Generic;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NuGet;
@@ -8,20 +9,21 @@ using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 namespace Nuget.PackageIndex.Client
 {
     /// <summary>
-    /// Code imported form Microsoft.CodeAnalysis since it is internal there and we need it
+    /// Contains helper methods for operations with packages and target frameworks
     /// </summary>
     internal static class TargetFrameworkHelper
     {
+        /// <summary>
+        /// Returns all packages that support given list of target frameworks.
+        /// Note: if projectTargetFrameworks is null or empty list it means that project type
+        /// did not support discovery of target frameworks and thus we default to display all available
+        /// packages for discoverability purpose (this whole feature is about discoverability). In this case
+        /// we let user to figure out what he wants to do with unsupported packages, we at least show them.
+        /// </summary>
         public static IEnumerable<TypeInfo> GetSupportedPackages(IEnumerable<TypeInfo> packagesWithGivenType, 
                                                                  IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks,
                                                                  bool allowHigherVersions)
         {
-            // Check if project supports packages' target frameworks.
-            // Note: if projectTargetFrameworks is null or empty list it means that project type
-            // did not support discovery of target frameworks and thus we default to display all available
-            // packages for discoverability purpose (this whole feature is about discoverability). In this case
-            // we let user to figure out what he wants to do with unsupported packages, we at least show them.
-
             List<TypeInfo> supportedPackages;
             if (projectTargetFrameworks != null && projectTargetFrameworks.Any())
             {
@@ -45,7 +47,10 @@ namespace Nuget.PackageIndex.Client
             return supportedPackages;
         }
 
-        private static bool SupportsProjectTargetFrameworks(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks)
+        /// <summary>
+        /// Checks if package supports any of project's target frameworks
+        /// </summary>
+        public static bool SupportsProjectTargetFrameworks(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks)
         {
             // if we find at least any framework in package that current project supports,
             // we show this package to user.
@@ -70,6 +75,32 @@ namespace Nuget.PackageIndex.Client
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns a list of distinct target frameworks for the list of given projects
+        /// </summary>
+        public static IEnumerable<TargetFrameworkMetadata> GetDistinctTargetFrameworks(IEnumerable<ProjectMetadata> projects)
+        {
+            var distinctFrameworks = new Dictionary<string, TargetFrameworkMetadata>(StringComparer.OrdinalIgnoreCase);
+            foreach (var project in projects)
+            {
+                if (project.TargetFrameworks == null)
+                {
+                    continue;
+                }
+
+                foreach (var fx in project.TargetFrameworks)
+                {
+                    TargetFrameworkMetadata tempFx;
+                    if (!distinctFrameworks.TryGetValue(fx.TargetFrameworkShortName, out tempFx))
+                    {
+                        distinctFrameworks.Add(fx.TargetFrameworkShortName, fx);
+                    }
+                }
+            }
+
+            return distinctFrameworks.Values;
         }
 
         private static bool PackageExistsInTheProject(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks, bool allowHigherVersions)

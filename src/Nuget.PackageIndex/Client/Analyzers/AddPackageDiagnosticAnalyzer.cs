@@ -30,40 +30,47 @@ namespace Nuget.PackageIndex.Client.Analyzers
         internal const int MaxPackageSuggestions = 5;
 
         private readonly IPackageSearcher _packageSearcher;
-        private readonly ITargetFrameworkProvider _targetFrameworkProvider;
-
-        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, ITargetFrameworkProvider targetFrameworkProvider)
-            : this(new PackageSearcher(new LogFactory(LogLevel.Quiet)), identifierFilters, targetFrameworkProvider)
+        private readonly IProjectMetadataProvider _projectMetadataProvider;
+        
+        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, 
+                                            IProjectMetadataProvider projectMetadataProvider)
+            : this(new PackageSearcher(new LogFactory(LogLevel.Quiet)), identifierFilters, projectMetadataProvider)
         {
         }
 
-        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, ITargetFrameworkProvider targetFrameworkProvider, ILog logger)
-            : this(new PackageSearcher(logger), identifierFilters, targetFrameworkProvider)
+        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, 
+                                            IProjectMetadataProvider projectMetadataProvider, 
+                                            ILog logger)
+            : this(new PackageSearcher(logger), identifierFilters, projectMetadataProvider)
         {
         }
 
-        internal AddPackageDiagnosticAnalyzer(IPackageSearcher packageSearcher, IEnumerable<IIdentifierFilter> identifierFilters, ITargetFrameworkProvider targetFrameworkProvider)
+        internal AddPackageDiagnosticAnalyzer(IPackageSearcher packageSearcher, 
+                                              IEnumerable<IIdentifierFilter> identifierFilters, 
+                                              IProjectMetadataProvider projectMetadataProvider)
             : base(identifierFilters)
         {
             _packageSearcher = packageSearcher;
-            _targetFrameworkProvider = targetFrameworkProvider;
+            _projectMetadataProvider = projectMetadataProvider;
         }
 
         /// <summary>
         /// Does actual query to Packag Index to find packages where a given type is defined.
+        /// We will display information about all packages returned form index to suggest user where
+        /// type can be located, however when user clicks Ctrl+. we would display only code fixes for packages
+        /// that satisfy current project target frameworks list.
+        /// 
         /// Note: At diagnostic level there no way to know in which document, project or workspace 
         /// we are for a given SyntaxNode (or it's SyntaxNodeAnalysisContext) since diagnostics 
         /// work at csc.exe level (in command line for example) and there no container objects defined
-        /// at that time. 
-        /// Thus we will display information about all packages returned form index to suggest user where
-        /// type can be located, however when user clicks Ctrl+. we would display only code fixes for packages
-        /// that satisfy current project target frameworks list.
+        /// at that time.
         /// </summary>
         protected override IEnumerable<string> AnalyzeNode(TIdentifierNameSyntax node)
         {
-            var projectFilter = GetProjectFilter();
-            if (!projectFilter.IsProjectSupported(node.GetLocation().SourceTree.FilePath))
+            var projects = _projectMetadataProvider.GetProjects(node.GetLocation().SourceTree.FilePath);
+            if (projects == null || !projects.Any())
             {
+                // project is unsupported
                 return null;
             }
 
@@ -74,7 +81,8 @@ namespace Nuget.PackageIndex.Client.Analyzers
                 return null;
             }
 
-            var projectTargetFrameworks = _targetFrameworkProvider.GetTargetFrameworks(node.GetLocation().SourceTree.FilePath);
+            // get distinct frameworks from all projects current file belongs to
+            var distinctTargetFrameworks = TargetFrameworkHelper.GetDistinctTargetFrameworks(projects);
 
             // Note: allowHigherVersions=true here since we want to show diagnostic message for type if it exists in some package 
             // for discoverability (tooltip) but we would not supply a code fix if package already installed in the project with 
@@ -82,8 +90,9 @@ namespace Nuget.PackageIndex.Client.Analyzers
             // Note2: the problem here is that we don't know if type exist in older versions of the package or not and to store 
             // all package versions in index might slow things down. If we receive feedback that we need ot be more smart here 
             // we should consider adding all package versions to the local index.
-            return GetFriendlyPackagesString(TargetFrameworkHelper.GetSupportedPackages(packagesWithGivenType, projectTargetFrameworks, allowHigherVersions:true)
-                .Take(MaxPackageSuggestions));
+            var supportedPackages = TargetFrameworkHelper.GetSupportedPackages(packagesWithGivenType,
+                                                            distinctTargetFrameworks, allowHigherVersions: true);
+            return GetFriendlyPackagesString(supportedPackages.Take(MaxPackageSuggestions));
         }
 
         private IEnumerable<string> GetFriendlyPackagesString(IEnumerable<TypeInfo> types)
@@ -115,8 +124,10 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
         #region Abstract methods and properties
 
+        /// <summary>
+        /// Allow to overwrite it in concrete implementations to support other locales
+        /// </summary>
         protected abstract string FriendlyMessageFormat { get; }
-        protected abstract IProjectFilter GetProjectFilter();
 
         #endregion
     }

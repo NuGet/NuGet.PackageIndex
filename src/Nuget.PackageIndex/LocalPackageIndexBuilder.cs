@@ -67,6 +67,11 @@ namespace Nuget.PackageIndex
             _packageSources = sources.Select(x => Environment.ExpandEnvironmentVariables(x)).ToList();
         }
 
+        public IEnumerable<string> GetPackageDirectories()
+        {
+            return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x));
+        }
+
         /// <summary>
         /// Getting packages from local folders that contain packages.
         /// </summary>
@@ -77,20 +82,32 @@ namespace Nuget.PackageIndex
             var packages = new List<string>();
             foreach (var source in _packageSources)
             {
-                var nupkgFiles = Directory.GetFiles(source, "*.nupkg", SearchOption.AllDirectories);
-                foreach (var nupkgFile in nupkgFiles)
+                if (!Directory.Exists(source))
                 {
-                    if (cancellationToken != null && cancellationToken.IsCancellationRequested)
-                    {
-                        return null;
-                    }
+                    continue;
+                }
 
-                    if (newOnly && File.GetLastWriteTime(nupkgFile) <= _index.LastWriteTime)
+                try
+                {
+                    var nupkgFiles = Directory.GetFiles(source, "*.nupkg", SearchOption.AllDirectories);
+                    foreach (var nupkgFile in nupkgFiles)
                     {
-                        continue;
-                    }
+                        if (cancellationToken != null && cancellationToken.IsCancellationRequested)
+                        {
+                            return null;
+                        }
 
-                    packages.Add(nupkgFile);
+                        if (newOnly && File.GetLastWriteTime(nupkgFile) <= _index.LastWriteTime)
+                        {
+                            continue;
+                        }
+
+                        packages.Add(nupkgFile);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Debug.Write(e.ToString());
                 }
             }
 

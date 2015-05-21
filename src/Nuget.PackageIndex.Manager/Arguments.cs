@@ -22,6 +22,7 @@ namespace Nuget.PackageIndex.Manager
             });
             optionsSet.AddOption("-t|--type=", Resources.TypeDescription, value => arguments.Type = value);
             optionsSet.AddOption("-p|--package=", Resources.PackageDescription, value => arguments.Package = value);
+            optionsSet.AddOption("-n|--namespace=", Resources.TypeDescription, value => arguments.Namespace = value);
             optionsSet.AddOption("-q|--quiet", Resources.QuietDescription, value => arguments.Quiet = (value != null));
             optionsSet.AddOption("-v|--verbose", Resources.VerboseDescription, value => arguments.Verbose = (value != null));
             optionsSet.AddOption("-f|--force", Resources.ForceDescription, value => arguments.Force = (value != null));
@@ -41,6 +42,7 @@ namespace Nuget.PackageIndex.Manager
         public PackageIndexManagerAction Action { get; set; }
         public string Type { get; set; }
         public string Package { get; set; }
+        public string Namespace { get; set; }
         public bool Force { get; set; }
         public bool Quiet { get; set; }
         public bool Verbose { get; set; }

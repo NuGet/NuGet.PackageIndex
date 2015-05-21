@@ -3,6 +3,7 @@
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
+using System.Collections.Generic;
 using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
@@ -16,19 +17,25 @@ namespace Nuget.PackageIndex.Client.CodeFixes
         private readonly IPackageInstaller _packageInstaller;
         private readonly Document _document;
         private readonly TypeInfo _typeInfo;
+        private readonly IEnumerable<ProjectMetadata> _projects;
         private readonly string _title;
 
-        public AddPackageOperation(IPackageInstaller packageInstaller, Document document, TypeInfo typeInfo, string title)
+        public AddPackageOperation(IPackageInstaller packageInstaller, 
+                                   Document document, 
+                                   TypeInfo typeInfo, 
+                                   IEnumerable<ProjectMetadata> projects,
+                                   string title)
         {
             _packageInstaller = packageInstaller;
             _document = document;
             _typeInfo = typeInfo;
+            _projects = projects;
             _title = title;
         }
 
         public override void Apply(Workspace workspace, CancellationToken cancellationToken = default(CancellationToken))
         {
-            _packageInstaller.InstallPackage(workspace, _document, _typeInfo, cancellationToken);
+            _packageInstaller.InstallPackage(workspace, _document, _typeInfo, _projects, cancellationToken);
         }
 
         public override string Title

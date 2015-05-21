@@ -4,9 +4,9 @@ using System.Collections.Generic;
 
 namespace Nuget.PackageIndex.Client
 {
-    public class ProjectMetadata
+    public class TargetFrameworkMetadata
     {
-        public string ProjectPath { get; set; }
-        public List<TargetFrameworkMetadata> TargetFrameworks { get; set; }
+        public string TargetFrameworkShortName { get; set; }
+        public Dictionary<string, string> Packages { get; set; }
     }
 }

@@ -49,6 +49,14 @@ namespace Nuget.PackageIndex
 
         #region PackageIndexBase
 
+        protected override string IndexDirectoryPath
+        {
+            get
+            {
+                return _location;
+            }
+        }
+
         protected override LuceneDirectory IndexDirectory
         {
             get
@@ -74,6 +82,7 @@ namespace Nuget.PackageIndex
 
             return DateTime.MinValue;
         }
+
         #endregion
     }
 }

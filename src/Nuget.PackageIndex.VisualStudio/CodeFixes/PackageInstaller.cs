@@ -13,6 +13,8 @@ using NuGet.VisualStudio;
 using Document = Microsoft.CodeAnalysis.Document;
 using Task = System.Threading.Tasks.Task;
 using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
+using System.Collections.Generic;
+using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes
 {
@@ -45,68 +47,77 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
             nugetInstallerEvents.PackageInstalled += OnPackageInstalled;
         }
 
-        public void InstallPackage(Workspace workspace, Document document, TypeInfo typeInfo, CancellationToken cancellationToken = default(CancellationToken))
+        public void InstallPackage(Workspace workspace, 
+                                   Document document, 
+                                   TypeInfo typeInfo, 
+                                   IEnumerable<ProjectMetadata> projects, 
+                                   CancellationToken cancellationToken = default(CancellationToken))
         {
             Debug.Assert(typeInfo != null);
 
             ThreadHelper.JoinableTaskFactory.RunAsync(async delegate {
-                // Switch to main thread
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-
-                try
+                foreach (var project in projects)
                 {
-                    var container = _serviceProvider.GetService<IComponentModel, SComponentModel>();
-                    var docHierarchy = document.GetVsHierarchy(_serviceProvider);
-                    if (docHierarchy == null)
+                    try
                     {
-                        return;
-                    }
+                        var container = _serviceProvider.GetService<IComponentModel, SComponentModel>();
+                        var projectSpecificInstallers = container.DefaultExportProvider.GetExportedValues<IProjectPackageInstaller>();
+                        if (projectSpecificInstallers != null && projectSpecificInstallers.Any())
+                        {
+                            var supportedInstaller = projectSpecificInstallers.FirstOrDefault(x => x.SupportsProject(project.ProjectPath));
+                            if (supportedInstaller != null)
+                            {
+                                if (await SafeExecuteActionAsync(
+                                    delegate {
+                                        var frameworks = typeInfo.TargetFrameworks == null
+                                                            ? null
+                                                            : typeInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
+                                        return supportedInstaller.InstallPackageAsync(project.ProjectPath, typeInfo.PackageName, typeInfo.PackageVersion, frameworks, cancellationToken);
+                                    }))
+                                {
+                                    continue; // package installed successfully
+                                }
+                            }
+                        }
 
-                    var project = docHierarchy.GetDTEProject();
-                    var projectSpecificInstallers = container.DefaultExportProvider.GetExportedValues<IProjectPackageInstaller>();
-                    if (projectSpecificInstallers != null && projectSpecificInstallers.Any())
-                    {
-                        var supportedInstaller = projectSpecificInstallers.FirstOrDefault(x => x.SupportsProject(project));
-                        if (supportedInstaller != null)
+                        // If there no project specific installer provided by project system, use IVsPackageInstaller
+                        // Note: IVsPackageInstaller needs DTE project thus must run on UI thread
+
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+                        var docHierarchy = document.GetVsHierarchy(_serviceProvider);
+                        if (docHierarchy == null)
+                        {
+                            return;
+                        }
+
+                        var dteProject = docHierarchy.GetDTEProject();
+                        var installer = container.DefaultExportProvider.GetExportedValue<IVsPackageInstaller>() as IVsPackageInstaller2;
+                        var packageSourceProvider = container.DefaultExportProvider.GetExportedValue<IVsPackageSourceProvider>();
+                        var sources = packageSourceProvider.GetSources(includeUnOfficial: true, includeDisabled: false).Select(x => x.Value).ToList();
+
+                        // if pass all sources to InstallPackageAsync it would throw Central Directory corrupt
+                        // if one of the feeds is not supported and stop installation - nuget's bug
+                        foreach (var source in sources)
                         {
                             if (await SafeExecuteActionAsync(
-                                delegate {
-                                    var frameworks = typeInfo.TargetFrameworks == null 
-                                                        ? null 
-                                                        : typeInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
-                                    return supportedInstaller.InstallPackageAsync(project, typeInfo.PackageName, typeInfo.PackageVersion, frameworks, cancellationToken);
-                                }))
+                                    delegate
+                                    {
+                                        return installer.InstallPackageAsync(dteProject, new[] { source }, typeInfo.PackageName, typeInfo.PackageVersion, true, cancellationToken);
+                                    }))
                             {
-                                return; // package installed successfully
+                                break;
                             }
                         }
                     }
-
-                    // if there no project specific installer use nuget default IVsPackageInstaller
-                    var installer = container.DefaultExportProvider.GetExportedValue<IVsPackageInstaller>() as IVsPackageInstaller2;
-                    var packageSourceProvider = container.DefaultExportProvider.GetExportedValue<IVsPackageSourceProvider>();
-                    var sources = packageSourceProvider.GetSources(includeUnOfficial: true, includeDisabled: false).Select(x => x.Value).ToList();
-
-                    // if pass all sources to InstallPackageAsync it would throw Central Directory corrupt
-                    // if one of the feeds is not supported and stop installation - nuget's bug
-                    foreach (var source in sources)
+                    catch (Exception e)
                     {
-                        if (await SafeExecuteActionAsync(
-                                delegate {
-                                    return installer.InstallPackageAsync(project, new[] { source }, typeInfo.PackageName, typeInfo.PackageVersion, true, cancellationToken);
-                                }))
-                        {
-                            break;
-                        }
+                        // we should not throw here, since it would create an exception that may be 
+                        // visible to the user, instead just dump into debugger output or to package
+                        // manager console.
+                        // TODO Package manager console?
+                        Debug.Write(e.ToString());
                     }
-                }
-                catch (Exception e)
-                {
-                    // we should not throw here, since it would create an exception that may be 
-                    // visible to the user, instead just dump into debugger output or to package
-                    // manager console.
-                    // TODO Package manager console?
-                    Debug.Write(e.ToString());
                 }
             });
         }

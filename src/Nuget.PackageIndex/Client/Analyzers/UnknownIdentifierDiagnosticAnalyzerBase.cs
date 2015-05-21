@@ -3,9 +3,9 @@
 using System;
 using System.Linq;
 using System.Collections.Immutable;
+using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Generic;
 
 namespace Nuget.PackageIndex.Client.Analyzers
 {
@@ -73,7 +73,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
                 return;
             }
 
-            // check if unknow identifier is really unknown type or id, and not one of the corner cases
+            // check if unknown identifier is really unknown type or id, and not one of the corner cases
             // where identifier can not be bind to symbol, but is actually legal. For example, 
             // using IType=System.Type, here IType would be also unknown identifier for us, but we don't
             // need to suggest any fixes. 

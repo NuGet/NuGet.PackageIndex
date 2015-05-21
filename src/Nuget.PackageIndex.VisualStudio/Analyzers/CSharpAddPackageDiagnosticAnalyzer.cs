@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 using System.Collections.Immutable;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Nuget.PackageIndex.Client.Analyzers;
 using Nuget.PackageIndex.VisualStudio.Analyzers.IdentifierFilters;
 
@@ -16,23 +16,17 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     /// package found it suggest user to install it.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public sealed class CSharpAddPackageDiagnosticAnalyzer : AddPackageDiagnosticAnalyzer<SyntaxKind, SimpleNameSyntax, QualifiedNameSyntax, IdentifierNameSyntax>
+    public sealed class CSharpAddPackageDiagnosticAnalyzer : 
+        AddPackageDiagnosticAnalyzer<SyntaxKind, SimpleNameSyntax, QualifiedNameSyntax, IdentifierNameSyntax>
     {
         internal const string DiagnosticId = "MissingPackage";
         internal const string AddPackageDiagnosticDefaultMessageFormat = "{0}";
 
         private static readonly ImmutableArray<SyntaxKind> s_kindsOfInterest = ImmutableArray.Create(SyntaxKind.IdentifierName);
 
-        private readonly IProjectFilter _projectFilter;
-
         public CSharpAddPackageDiagnosticAnalyzer()
-            : base(new [] // filters can be hardcoded here until we need an extensibility
-                          {
-                              new UsingIdentifierFilter()
-                          }, TargetFrameworkProvider.Instance) // TODO add logger that prints to Package manager console
+            : base(new [] { new UsingIdentifierFilter() }, ProjectMetadataProvider.Instance)
         {
-            _projectFilter = new DnxProjectFilter();
-            VsServices.Instance.Initialize(); // sign up for IDE wide (shutdown for example)  events 
         }
 
         protected override ImmutableArray<SyntaxKind> SyntaxKindsOfInterest
@@ -47,7 +41,6 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
         {
             get
             {
-                // TODO project imported interface should have GetMessage method 
                 return GetDiagnosticDescriptor(DiagnosticId, 
                                                Resources.AddPackageDiagnosticCategory, 
                                                Resources.AddPackageDiagnosticTitle, 
@@ -61,12 +54,6 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             {
                 return Resources.AddPackageDiagnosticFriendlyMessageFormat;
             }
-        }
-
-        protected override IProjectFilter GetProjectFilter()
-        {
-            // Project Filters shuold be removed after RC, this hack is temporary
-            return _projectFilter;
         }
     }
 }

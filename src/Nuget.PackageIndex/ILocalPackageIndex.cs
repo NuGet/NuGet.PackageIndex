@@ -15,6 +15,7 @@ namespace Nuget.PackageIndex
         bool IsLocked { get; }
         bool IndexExists { get; }
         DateTime LastWriteTime { get; }
+        string Location { get; }
         IList<PackageIndexError> AddPackage(ZipPackage package, bool force = false);
         IList<PackageIndexError> RemovePackage(string packageName);
         IList<PackageIndexError> Clean();

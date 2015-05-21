@@ -23,7 +23,7 @@ namespace Nuget.PackageIndex
         public IEnumerable<TypeInfo> Search(string typeName)
         {
             IEnumerable<TypeInfo> result = null;
-            var localIndex = _indexFactory.GetLocalIndex();
+            var localIndex = _indexFactory.GetLocalIndex(createIfNotExists:true);
             if (localIndex != null)
             {
                 result = localIndex.GetTypes(typeName);

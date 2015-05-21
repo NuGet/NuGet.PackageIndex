@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22731.0
+VisualStudioVersion = 14.0.22609.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{34A6C057-EF7A-4B52-ACE4-F74CA3DEBFF6}"
 EndProject
@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nuget.PackageIndex", "src\N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nuget.PackageIndex.Manager", "src\Nuget.PackageIndex.Manager\Nuget.PackageIndex.Manager.csproj", "{0CAEB2B8-CC39-42B9-A80B-31E3155FAC2A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nuget.PackageIndex.Tests", "tests\Nuget.PackageIndex.Tests\Nuget.PackageIndex.Tests.csproj", "{CFF0686F-CCAC-479C-B26E-1473472336A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,10 @@ Global
 		{0CAEB2B8-CC39-42B9-A80B-31E3155FAC2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0CAEB2B8-CC39-42B9-A80B-31E3155FAC2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0CAEB2B8-CC39-42B9-A80B-31E3155FAC2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFF0686F-CCAC-479C-B26E-1473472336A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFF0686F-CCAC-479C-B26E-1473472336A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFF0686F-CCAC-479C-B26E-1473472336A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFF0686F-CCAC-479C-B26E-1473472336A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -49,5 +55,6 @@ Global
 		{2C452F86-0D90-454C-8CE1-CB61C33D78AB} = {34A6C057-EF7A-4B52-ACE4-F74CA3DEBFF6}
 		{B5650D11-E679-4FFA-BC2E-A9F29DD01768} = {34A6C057-EF7A-4B52-ACE4-F74CA3DEBFF6}
 		{0CAEB2B8-CC39-42B9-A80B-31E3155FAC2A} = {34A6C057-EF7A-4B52-ACE4-F74CA3DEBFF6}
+		{CFF0686F-CCAC-479C-B26E-1473472336A6} = {D88D644B-616E-4E93-8E58-F06EE7793464}
 	EndGlobalSection
 EndGlobal

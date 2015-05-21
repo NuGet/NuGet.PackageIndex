@@ -17,17 +17,20 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     {
         private readonly IPackageInstaller _packageInstaller;
         private readonly TypeInfo _typeInfo;
+        private readonly IEnumerable<ProjectMetadata> _projects;
         private readonly Func<CancellationToken, Task<Document>> _createChangedDocument;
         private readonly string _titleFormat;
         private string _title;
 
         public AddPackageCodeAction(IPackageInstaller packageInstaller, 
                                     TypeInfo typeInfo, 
+                                    IEnumerable<ProjectMetadata> projects,
                                     string titleFormat, 
                                     Func<CancellationToken, Task<Document>> createChangedDocument)
         {
             _packageInstaller = packageInstaller;
             _typeInfo = typeInfo;
+            _projects = projects;
             _createChangedDocument = createChangedDocument;
             _titleFormat = titleFormat;
         }
@@ -51,11 +54,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
         /// <summary>
         /// Use title as Id since it will be always unique (package name + version)
         /// </summary>
-#if RC
-        public override string Id
-#else
         public override string EquivalenceKey
-#endif
         {
             get
             {
@@ -86,7 +85,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             return new CodeActionOperation[]
             {
                 new ApplyChangesOperation(changedDocument.Project.Solution), // add namespace
-                new AddPackageOperation(_packageInstaller, changedDocument, _typeInfo, Title) // add package
+                new AddPackageOperation(_packageInstaller, changedDocument, _typeInfo, _projects, Title) // add package
             };
         }
     }

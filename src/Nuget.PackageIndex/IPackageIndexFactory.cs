@@ -1,5 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+using System.Threading;
+
 namespace Nuget.PackageIndex
 {
     /// <summary>
@@ -8,8 +10,10 @@ namespace Nuget.PackageIndex
     /// </summary>
     public interface IPackageIndexFactory
     {
-        ILocalPackageIndex GetLocalIndex(bool createIfNotExists = true);
+        ILocalPackageIndex GetLocalIndex(bool createIfNotExists);
         IRemotePackageIndex GetRemoteIndex();
-        ILocalPackageIndexBuilder GetLocalIndexBuilder();
+        ILocalPackageIndexBuilder GetLocalIndexBuilder(bool createIfNotExists);
+        void DetachFromLocalIndex();
+        CancellationToken GetCancellationToken();
     }
 }

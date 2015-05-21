@@ -12,7 +12,8 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
     /// </summary>
     public interface IProjectPackageInstaller
     {
-        bool SupportsProject(EnvDTE.Project project);
-        Task InstallPackageAsync(EnvDTE.Project project, string packageName, string packageVersion, IEnumerable<FrameworkName> frameworks, CancellationToken cancellationToken);
+        bool SupportsProject(string projectPath);
+        Task InstallPackageAsync(string projectPath, string packageName, string packageVersion, 
+                                 IEnumerable<FrameworkName> frameworks, CancellationToken cancellationToken);
     }
 }

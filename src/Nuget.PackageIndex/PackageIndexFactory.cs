@@ -12,7 +12,7 @@ namespace Nuget.PackageIndex
     public class PackageIndexFactory : IPackageIndexFactory
     {
         // will be used to cancel all ongoing index update operations started asynchronously on background threads
-        public static CancellationTokenSource LocalIndexCancellationTokenSource = new CancellationTokenSource();
+        internal static CancellationTokenSource LocalIndexCancellationTokenSource = new CancellationTokenSource();
 
         private object _indexLock = new object();
 
@@ -29,9 +29,14 @@ namespace Nuget.PackageIndex
             _logger = logger;            
         }
 
-        public void InitializeLocalIndex()
+        public CancellationToken GetCancellationToken()
         {
-            GetLocalIndex(createIfNotExists:true);
+            return LocalIndexCancellationTokenSource.Token;
+        }
+
+        public void DetachFromLocalIndex()
+        {
+            LocalIndexCancellationTokenSource.Cancel();
         }
 
         public ILocalPackageIndex GetLocalIndex(bool createIfNotExists = true)
@@ -62,9 +67,9 @@ namespace Nuget.PackageIndex
         /// Creating a new instance of builder, which would attach to existing local index instance
         /// </summary>
         /// <returns></returns>
-        public ILocalPackageIndexBuilder GetLocalIndexBuilder()
+        public ILocalPackageIndexBuilder GetLocalIndexBuilder(bool createIfNotExists = false)
         {
-            return new LocalPackageIndexBuilder(GetLocalIndex(false), _logger);
+            return new LocalPackageIndexBuilder(GetLocalIndex(createIfNotExists), _logger);
         }
     }
 }

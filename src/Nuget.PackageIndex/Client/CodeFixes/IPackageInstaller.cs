@@ -3,6 +3,7 @@
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
+using System.Collections.Generic;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -13,6 +14,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     /// </summary>
     public interface IPackageInstaller
     {
-        void InstallPackage(Workspace workspace, Document document, TypeInfo typeInfo, CancellationToken cancellationToken = default(CancellationToken));
+        void InstallPackage(Workspace workspace, Document document, TypeInfo typeInfo, 
+                            IEnumerable<ProjectMetadata> projects, CancellationToken cancellationToken);
     }
 }

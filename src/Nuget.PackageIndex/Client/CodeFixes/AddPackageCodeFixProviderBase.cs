@@ -24,28 +24,41 @@ namespace Nuget.PackageIndex.Client.CodeFixes
 
         private readonly IPackageInstaller _packageInstaller;
         private readonly IPackageSearcher _packageSearcher;
-        private readonly ITargetFrameworkProvider _targetFrameworkProvider;
+        private readonly IProjectMetadataProvider _projectMetadataProvider;
 
-        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, ITargetFrameworkProvider targetFrameworkProvider)
-            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)), targetFrameworkProvider)
+        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, 
+                                             IProjectMetadataProvider projectMetadataProvider)
+            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)), projectMetadataProvider)
         {
         }
 
-        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, ILog logger, ITargetFrameworkProvider targetFrameworkProvider)
-            : this(packageInstaller, new PackageSearcher(logger), targetFrameworkProvider)
+        public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, 
+                                             ILog logger, 
+                                             IProjectMetadataProvider projectMetadataProvider)
+            : this(packageInstaller, new PackageSearcher(logger), projectMetadataProvider)
         {
         }
 
-        internal AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, IPackageSearcher packageSearcher, ITargetFrameworkProvider targetFrameworkProvider)
+        internal AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, 
+                                               IPackageSearcher packageSearcher, 
+                                               IProjectMetadataProvider projectMetadataProvider)
         {
             _packageInstaller = packageInstaller;
             _packageSearcher = packageSearcher;
-            _targetFrameworkProvider = targetFrameworkProvider;
+            _projectMetadataProvider = projectMetadataProvider;
         }
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var document = context.Document;
+
+            var projects = _projectMetadataProvider.GetProjects(document.FilePath);
+            if (projects == null || !projects.Any())
+            {
+                // project is unsupported
+                return;
+            }
+
             var span = context.Span;
             var diagnostics = context.Diagnostics;
             var cancellationToken = context.CancellationToken;
@@ -73,24 +86,33 @@ namespace Nuget.PackageIndex.Client.CodeFixes
                 if (CanAddImport(node, cancellationToken))
                 {
                     var typeName = node.ToString();                    
-                    var projectTargetFrameworks = _targetFrameworkProvider.GetTargetFrameworks(document.FilePath);
+                    // get distinct frameworks from all projects current file belongs to
+                    var distinctTargetFrameworks = TargetFrameworkHelper.GetDistinctTargetFrameworks(projects);
+
                     // Note: allowHigherVersions=false here since we don't want to provide code fix that adds another 
                     // dependency for the same package but different version, user should upgrade it on his own when
                     // see Diagnostic suggestion
-                    var packagesWithGivenType = TargetFrameworkHelper.GetSupportedPackages(_packageSearcher.Search(typeName), projectTargetFrameworks, allowHigherVersions:false)
-                                                    .Take(MaxPackageSuggestions);
+                    var packagesWithGivenType = TargetFrameworkHelper.GetSupportedPackages(_packageSearcher.Search(typeName),
+                                                                                           distinctTargetFrameworks, 
+                                                                                           allowHigherVersions:false)
+                                                                     .Take(MaxPackageSuggestions);
 
                     foreach (var typeInfo in packagesWithGivenType)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
                         var namespaceName = typeInfo.FullName.Contains(".") ? Path.GetFileNameWithoutExtension(typeInfo.FullName) : null;
-                        if (!string.IsNullOrEmpty(namespaceName))
+                        if (string.IsNullOrEmpty(namespaceName))
                         {
-                            var action = new AddPackageCodeAction(_packageInstaller, typeInfo, ActionTitle, 
-                                            (c) => AddImportAsync(node, namespaceName, document, placeSystemNamespaceFirst, cancellationToken));
-                            context.RegisterCodeFix(action, diagnostic);
+                            continue;
                         }
+
+                        var action = new AddPackageCodeAction(_packageInstaller, 
+                                                                typeInfo, 
+                                                                projects.Where(x => TargetFrameworkHelper.SupportsProjectTargetFrameworks(typeInfo, x.TargetFrameworks)).ToList(), 
+                                                                ActionTitle, 
+                                                                (c) => AddImportAsync(node, namespaceName, document, placeSystemNamespaceFirst, cancellationToken));
+                        context.RegisterCodeFix(action, diagnostic);
                     }
                 }
             }

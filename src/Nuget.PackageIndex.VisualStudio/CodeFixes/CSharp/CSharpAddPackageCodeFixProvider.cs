@@ -23,11 +23,14 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = ProviderName), Shared]
     public sealed class CSharpAddPackageCodeFixProvider : AddPackageCodeFixProviderBase
     {
-        private const string ProviderName = "Add Missing Package"; // should it also be localized?
+        // This is a code fix provider's name when it appears in the list of all 
+        // analyzers in VS. 
+        // TODO: Should it also be localized?
+        private const string ProviderName = "Add Missing Package";
 
         [ImportingConstructor]
         public CSharpAddPackageCodeFixProvider([Import]SVsServiceProvider serviceProvider)
-            : base(new PackageInstaller(serviceProvider), TargetFrameworkProvider.Instance)
+            : base(new PackageInstaller(serviceProvider), ProjectMetadataProvider.Instance)
         {
         }
 
