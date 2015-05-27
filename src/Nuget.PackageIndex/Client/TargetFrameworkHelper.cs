@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NuGet;
-using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
+using Nuget.PackageIndex.Models;
 
 namespace Nuget.PackageIndex.Client
 {
@@ -20,15 +20,15 @@ namespace Nuget.PackageIndex.Client
         /// packages for discoverability purpose (this whole feature is about discoverability). In this case
         /// we let user to figure out what he wants to do with unsupported packages, we at least show them.
         /// </summary>
-        public static IEnumerable<TypeInfo> GetSupportedPackages(IEnumerable<TypeInfo> packagesWithGivenType, 
+        public static IEnumerable<IPackageIndexModelInfo> GetSupportedPackages(IEnumerable<IPackageIndexModelInfo> packagesWithGivenType, 
                                                                  IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks,
                                                                  bool allowHigherVersions)
         {
-            List<TypeInfo> supportedPackages;
+            List<IPackageIndexModelInfo> supportedPackages;
             if (projectTargetFrameworks != null && projectTargetFrameworks.Any())
             {
                 // if project target frameworks are provided, try to filter
-                supportedPackages = new List<TypeInfo>();
+                supportedPackages = new List<IPackageIndexModelInfo>();
                 foreach (var packageInfo in packagesWithGivenType)
                 {
                     if (SupportsProjectTargetFrameworks(packageInfo, projectTargetFrameworks)
@@ -41,7 +41,7 @@ namespace Nuget.PackageIndex.Client
             else
             {
                 // if project did not provide target frameworks to us, show all packages with requested type
-                supportedPackages = new List<TypeInfo>(packagesWithGivenType);
+                supportedPackages = new List<IPackageIndexModelInfo>(packagesWithGivenType);
             }
 
             return supportedPackages;
@@ -50,7 +50,7 @@ namespace Nuget.PackageIndex.Client
         /// <summary>
         /// Checks if package supports any of project's target frameworks
         /// </summary>
-        public static bool SupportsProjectTargetFrameworks(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks)
+        public static bool SupportsProjectTargetFrameworks(IPackageIndexModelInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks)
         {
             // if we find at least any framework in package that current project supports,
             // we show this package to user.
@@ -103,22 +103,22 @@ namespace Nuget.PackageIndex.Client
             return distinctFrameworks.Values;
         }
 
-        private static bool PackageExistsInTheProject(TypeInfo typeInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks, bool allowHigherVersions)
+        private static bool PackageExistsInTheProject(IPackageIndexModelInfo packageInfo, IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks, bool allowHigherVersions)
         {
             if (allowHigherVersions)
             {
-                var packageVersion = new SemanticVersion(typeInfo.PackageVersion);
+                var packageVersion = new SemanticVersion(packageInfo.PackageVersion);
                 return projectTargetFrameworks.Any(x => x.Packages.Any(p =>
                         {
                             var projecsPackageVersion = new SemanticVersion(p.Value);
                             // if project has package with given name and version less than in index
-                            return p.Key.Equals(typeInfo.PackageName) && projecsPackageVersion < packageVersion;
+                            return p.Key.Equals(packageInfo.PackageName) && projecsPackageVersion < packageVersion;
                         }
                 ));
             }
             else
             {
-               return projectTargetFrameworks.Any(x => x.Packages.Any(p => p.Key.Equals(typeInfo.PackageName)));
+               return projectTargetFrameworks.Any(x => x.Packages.Any(p => p.Key.Equals(packageInfo.PackageName)));
             }
         }
     }

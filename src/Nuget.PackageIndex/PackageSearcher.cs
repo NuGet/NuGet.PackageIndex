@@ -20,7 +20,50 @@ namespace Nuget.PackageIndex
             _indexFactory = indexFactory;
         }
 
-        public IEnumerable<TypeInfo> Search(string typeName)
+        public IEnumerable<NamespaceInfo> SearchNamespace(string namespaceName)
+        {
+            IEnumerable<NamespaceInfo> result = null;
+            var localIndex = _indexFactory.GetLocalIndex(createIfNotExists: true);
+            if (localIndex != null)
+            {
+                result = localIndex.GetNamespaces(namespaceName);
+            }
+
+            if (result == null)
+            {
+                var remoteIndex = _indexFactory.GetRemoteIndex();
+                if (remoteIndex != null)
+                {
+                    result = remoteIndex.GetNamespaces(namespaceName);
+                }
+            }
+
+            return result;
+        }
+
+        public IEnumerable<ExtensionInfo> SearchExtension(string extensionName)
+        {
+            IEnumerable<ExtensionInfo> result = null;
+            var localIndex = _indexFactory.GetLocalIndex(createIfNotExists: true);
+            if (localIndex != null)
+            {
+                result = localIndex.GetExtensions(extensionName);
+            }
+
+            if (result == null)
+            {
+                var remoteIndex = _indexFactory.GetRemoteIndex();
+                if (remoteIndex != null)
+                {
+                    result = remoteIndex.GetExtensions(extensionName);
+                }
+            }
+
+            return result;
+        }
+
+
+        public IEnumerable<TypeInfo> SearchType(string typeName)
         {
             IEnumerable<TypeInfo> result = null;
             var localIndex = _indexFactory.GetLocalIndex(createIfNotExists:true);

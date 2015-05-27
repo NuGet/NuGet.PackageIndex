@@ -5,8 +5,6 @@ using Lucene.Net.Index;
 using Lucene.Net.Search;
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Nuget.PackageIndex.Models
 {
@@ -23,27 +21,6 @@ namespace Nuget.PackageIndex.Models
         internal const string NamespacePackageNameField = "NamespacePackageName";
         internal const string NamespacePackageVersionField = "NamespacePackageVersion";
         internal const string NamespaceTargetFrameworksField = "NamespaceTargetFrameworks";
-
-        public static string GetMD5Hash(NamespaceModel typeEntity)
-        {
-            // convert entity to byte array
-            var entityContents = typeEntity.ToString();
-            var byteContainer = new byte[entityContents.Length * 2];
-            Encoding.UTF8.GetEncoder().GetBytes(entityContents.ToCharArray(), 0, entityContents.Length, byteContainer, 0, true);
-
-            // generate MD5 hash for byte array
-            MD5 md5 = new MD5CryptoServiceProvider();
-            byte[] result = md5.ComputeHash(byteContainer);
-
-            // convert hash to hex string
-            var stringBuilder = new StringBuilder();
-            for (var i = 0; i < result.Length; i++)
-            {
-                stringBuilder.Append(result[i].ToString("X2"));
-            }
-
-            return stringBuilder.ToString();
-        }
 
         public NamespaceModel()
         {
@@ -69,7 +46,7 @@ namespace Nuget.PackageIndex.Models
         {
             var document = new Document();
 
-            var typeHash = new Field(NamespaceHashField, GetMD5Hash(this), Field.Store.NO, Field.Index.ANALYZED, Field.TermVector.NO);
+            var typeHash = new Field(NamespaceHashField, ModelHelpers.GetMD5Hash(ToString()), Field.Store.NO, Field.Index.ANALYZED, Field.TermVector.NO);
             typeHash.Boost = NamespaceHashFieldBoost;
             var typeName = new Field(NamespaceNameField, Name, Field.Store.YES, Field.Index.ANALYZED, Field.TermVector.NO);
             typeName.Boost = NamespaceNameFieldBoost;
@@ -90,7 +67,7 @@ namespace Nuget.PackageIndex.Models
 
         public Query GetDefaultSearchQuery()
         {
-            return new TermQuery(new Term(NamespaceHashField, GetMD5Hash(this)));
+            return new TermQuery(new Term(NamespaceHashField, ModelHelpers.GetMD5Hash(ToString())));
         }
     }
 }

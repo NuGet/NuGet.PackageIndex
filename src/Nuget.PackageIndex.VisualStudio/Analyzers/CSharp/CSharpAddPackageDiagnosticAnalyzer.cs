@@ -6,9 +6,8 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Nuget.PackageIndex.Client.Analyzers;
-using Nuget.PackageIndex.VisualStudio.Analyzers.IdentifierFilters;
 
-namespace Nuget.PackageIndex.VisualStudio.Analyzers
+namespace Nuget.PackageIndex.VisualStudio.Analyzers.CSharp
 {
     /// <summary>
     /// CSharp analyzer looking for all unknown identifiers and checking if they are types 
@@ -17,15 +16,15 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class CSharpAddPackageDiagnosticAnalyzer : 
-        AddPackageDiagnosticAnalyzer<SyntaxKind, SimpleNameSyntax, QualifiedNameSyntax, IdentifierNameSyntax>
+        AddPackageDiagnosticAnalyzer<SyntaxKind, SimpleNameSyntax, QualifiedNameSyntax, IdentifierNameSyntax, GenericNameSyntax>
     {
         internal const string DiagnosticId = "MissingPackage";
         internal const string AddPackageDiagnosticDefaultMessageFormat = "{0}";
 
-        private static readonly ImmutableArray<SyntaxKind> s_kindsOfInterest = ImmutableArray.Create(SyntaxKind.IdentifierName);
+        private static readonly ImmutableArray<SyntaxKind> s_kindsOfInterest = ImmutableArray.Create(SyntaxKind.IdentifierName, SyntaxKind.GenericName);
 
         public CSharpAddPackageDiagnosticAnalyzer()
-            : base(new [] { new UsingIdentifierFilter() }, ProjectMetadataProvider.Instance)
+            : base(ProjectMetadataProvider.Instance, new CSharpSyntaxHelper())
         {
         }
 
@@ -48,11 +47,27 @@ namespace Nuget.PackageIndex.VisualStudio.Analyzers
             }
         }
 
-        protected override string FriendlyMessageFormat
+        protected override string FriendlyNamespaceMessageFormat
         {
             get
             {
-                return Resources.AddPackageDiagnosticFriendlyMessageFormat;
+                return Resources.AddPackageForNamespaceFriendlyMessageFormat;
+            }
+        }
+
+        protected override string FriendlyExtensionMessageFormat
+        {
+            get
+            {
+                return Resources.AddPackageForExtensionFriendlyMessageFormat;
+            }
+        }
+
+        protected override string FriendlyTypeMessageFormat
+        {
+            get
+            {
+                return Resources.AddPackageForTypeFriendlyMessageFormat;
             }
         }
     }

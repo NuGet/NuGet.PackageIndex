@@ -111,8 +111,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Analyzers\CSharpAddPackageDiagnosticAnalyzer.cs" />
-    <Compile Include="Analyzers\IdentifierFilters\UsingIdentifierFilter.cs" />
+    <Compile Include="Analyzers\CSharp\CSharpAddPackageDiagnosticAnalyzer.cs" />
+    <Compile Include="CSharpSyntaxHelper.cs" />
     <Compile Include="IVsProjectMetadataProvider.cs" />
     <Compile Include="ProjectMetadataProvider.cs" />
     <Compile Include="CodeFixes\IProjectPackageInstaller.cs" />

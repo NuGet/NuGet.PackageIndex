@@ -12,7 +12,6 @@ namespace Nuget.PackageIndex
     public interface ILocalPackageIndexBuilder
     {
         ILocalPackageIndex Index { get; }
-        IEnumerable<string> GetPackages(bool newOnly, CancellationToken cancellationToken);
         IEnumerable<string> GetPackageDirectories();
         Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly, CancellationToken cancellationToken);
         LocalPackageIndexBuilderResult Clean();

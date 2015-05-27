@@ -1,14 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+using Nuget.PackageIndex.Engine;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Nuget.PackageIndex.Engine;
-using NuGet;
 using ILog = Nuget.PackageIndex.Logging.ILog;
 
 namespace Nuget.PackageIndex
@@ -31,6 +29,7 @@ namespace Nuget.PackageIndex
             };
 
         private List<string> _packageSources;
+        private readonly ILocalPackageLoader _discoverer;
         private readonly ILocalPackageIndex _index;
         public ILocalPackageIndex Index
         {
@@ -48,9 +47,15 @@ namespace Nuget.PackageIndex
         }
 
         internal LocalPackageIndexBuilder(ILocalPackageIndex index, ILog logger)
+            : this(index, logger, new NupkgLocalPackageLoader())
+        {
+        }
+
+        internal LocalPackageIndexBuilder(ILocalPackageIndex index, ILog logger, ILocalPackageLoader discoverer)
         {
             _logger = logger;
             _index = index;
+            _discoverer = discoverer;
 
             InitializePackageSources();
         }
@@ -70,48 +75,6 @@ namespace Nuget.PackageIndex
         public IEnumerable<string> GetPackageDirectories()
         {
             return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x));
-        }
-
-        /// <summary>
-        /// Getting packages from local folders that contain packages.
-        /// </summary>
-        public IEnumerable<string> GetPackages(bool newOnly, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            _logger.WriteVerbose("Checking packages at: {0}", string.Join(";", _packageSources));
-
-            var packages = new List<string>();
-            foreach (var source in _packageSources)
-            {
-                if (!Directory.Exists(source))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var nupkgFiles = Directory.GetFiles(source, "*.nupkg", SearchOption.AllDirectories);
-                    foreach (var nupkgFile in nupkgFiles)
-                    {
-                        if (cancellationToken != null && cancellationToken.IsCancellationRequested)
-                        {
-                            return null;
-                        }
-
-                        if (newOnly && File.GetLastWriteTime(nupkgFile) <= _index.LastWriteTime)
-                        {
-                            continue;
-                        }
-
-                        packages.Add(nupkgFile);
-                    }
-                }
-                catch(Exception e)
-                {
-                    Debug.Write(e.ToString());
-                }
-            }
-
-            return packages;
         }
 
         public Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken))
@@ -136,17 +99,18 @@ namespace Nuget.PackageIndex
                     _logger.WriteVerbose("Looking all existing packages...");
                 }
 
-                var packagePaths = GetPackages(newOnly).ToList();
-                _logger.WriteVerbose("Found {0} packages to be added to the index.", packagePaths.Count());
+                var packages = _discoverer.DiscoverPackages(_packageSources, newOnly, _index.LastWriteTime, cancellationToken).ToList();
+                _logger.WriteVerbose("Found {0} packages to be added to the index.", packages.Count());
+
                 bool success = true;
-                foreach (var nupkgFilePath in packagePaths)
+                foreach (var package in packages)
                 {
                     if (cancellationToken != null && cancellationToken.IsCancellationRequested)
                     {
                         return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed }; ;
                     }
 
-                    var errors = AddPackageInternal(nupkgFilePath);
+                    var errors = _index.AddPackage(package, force: false);
                     success &= (errors == null || !errors.Any());
                 }
 
@@ -179,12 +143,17 @@ namespace Nuget.PackageIndex
             return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };
         }
 
-        public LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force = false)
+        public LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force)
         {
             _logger.WriteInformation("Started package indexing {0}.", nupkgFilePath);
             var stopWatch = Stopwatch.StartNew();
 
-            var errors = AddPackageInternal(nupkgFilePath, force);
+            IList<PackageIndexError> errors = null;
+            var package = _discoverer.GetPackageMetadataFromPath(nupkgFilePath);
+            if (package != null)
+            {
+                errors = _index.AddPackage(package, force);
+            }
 
             stopWatch.Stop();
             _logger.WriteInformation("Finished package indexing.");
@@ -203,34 +172,6 @@ namespace Nuget.PackageIndex
             _logger.WriteInformation("Finished package removing.");
 
             return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
-        }
-
-        internal IList<PackageIndexError> AddPackageInternal(string nupkgFilePath, bool force = false)
-        {
-            if (string.IsNullOrEmpty(nupkgFilePath))
-            {
-                return null;
-            }
-
-            if (!File.Exists(nupkgFilePath))
-            {
-                return null;
-            }
-
-            ZipPackage package = null;
-            try
-            {
-                using (var fs = File.OpenRead(nupkgFilePath))
-                {
-                    package = new ZipPackage(fs);
-                }
-            }
-            catch(Exception e)
-            {
-                _logger.WriteError(string.Format("Failed to open package file '{0}'. Message: '{1}'", nupkgFilePath, e.Message));
-            }
-
-            return _index.AddPackage(package, force);
         }
     }
 }

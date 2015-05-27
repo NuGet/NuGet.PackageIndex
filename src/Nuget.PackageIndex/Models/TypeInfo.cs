@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Nuget.PackageIndex.Models
@@ -8,7 +9,7 @@ namespace Nuget.PackageIndex.Models
     /// <summary>
     /// Type metadata exposed publicly 
     /// </summary>
-    public class TypeInfo
+    public class TypeInfo : IPackageIndexModelInfo
     { 
         public string Name { get; set; }
         public string FullName { get; set; }
@@ -41,6 +42,21 @@ namespace Nuget.PackageIndex.Models
         protected string GetTargetFrameworksString()
         {
             return string.Join(";", TargetFrameworks) ?? "";
+        }
+
+        public string GetFriendlyEntityName()
+        {
+            return Name;
+        }
+
+        public string GetFriendlyPackageName()
+        {
+            return string.Format("{0} {1}", PackageName, PackageVersion);
+        }
+
+        public string GetNamespace()
+        {
+            return FullName.Contains(".") ? Path.GetFileNameWithoutExtension(FullName) : null;
         }
     }
 }

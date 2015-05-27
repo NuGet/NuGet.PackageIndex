@@ -1,9 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-using Nuget.PackageIndex.Engine;
-using NuGet;
 using System;
 using System.Collections.Generic;
+using Nuget.PackageIndex.Engine;
 
 namespace Nuget.PackageIndex
 {
@@ -16,7 +15,7 @@ namespace Nuget.PackageIndex
         bool IndexExists { get; }
         DateTime LastWriteTime { get; }
         string Location { get; }
-        IList<PackageIndexError> AddPackage(ZipPackage package, bool force = false);
+        IList<PackageIndexError> AddPackage(IPackageMetadata package, bool force);
         IList<PackageIndexError> RemovePackage(string packageName);
         IList<PackageIndexError> Clean();
     }

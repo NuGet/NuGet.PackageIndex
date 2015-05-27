@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 using System.Threading;
 using Microsoft.CodeAnalysis;
-using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
 using System.Collections.Generic;
+using Nuget.PackageIndex.Models;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -14,7 +14,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     /// </summary>
     public interface IPackageInstaller
     {
-        void InstallPackage(Workspace workspace, Document document, TypeInfo typeInfo, 
+        void InstallPackage(Workspace workspace, Document document, IPackageIndexModelInfo packageInfo, 
                             IEnumerable<ProjectMetadata> projects, CancellationToken cancellationToken);
     }
 }

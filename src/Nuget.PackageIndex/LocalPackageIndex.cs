@@ -20,6 +20,7 @@ namespace Nuget.PackageIndex
 
         private readonly LuceneDirectory _directory;
         private readonly IPackageSearchEngine _engine;
+        private readonly IReflectorFactory _reflectorFactory;
 
         private readonly string _location;
 
@@ -35,15 +36,17 @@ namespace Nuget.PackageIndex
 
             _directory = FSDirectory.Open(_location);
             _engine = new PackageSearchEngine(IndexDirectory, Analyzer, Logger);
+            _reflectorFactory = new RoslynReflectorFactory();
         }
 
         /// <summary>
         /// ctor for unit tests
         /// </summary>
-        internal LocalPackageIndex(LuceneDirectory directory, IPackageSearchEngine engine, ILog logger)
+        internal LocalPackageIndex(LuceneDirectory directory, IPackageSearchEngine engine, IReflectorFactory reflectorFactory, ILog logger)
         {
             _directory = directory;
             _engine = engine;
+            _reflectorFactory = reflectorFactory;
             Logger = logger;
         }
 
@@ -81,6 +84,13 @@ namespace Nuget.PackageIndex
             }
 
             return DateTime.MinValue;
+        }
+
+        protected override IReflectorFactory ReflectorFactory {
+            get
+            {
+                return _reflectorFactory;
+            }
         }
 
         #endregion

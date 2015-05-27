@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
-using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
+using Nuget.PackageIndex.Models;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -16,20 +16,20 @@ namespace Nuget.PackageIndex.Client.CodeFixes
     internal class AddPackageCodeAction : CodeAction
     {
         private readonly IPackageInstaller _packageInstaller;
-        private readonly TypeInfo _typeInfo;
+        private readonly IPackageIndexModelInfo _packageInfo;
         private readonly IEnumerable<ProjectMetadata> _projects;
         private readonly Func<CancellationToken, Task<Document>> _createChangedDocument;
         private readonly string _titleFormat;
         private string _title;
 
-        public AddPackageCodeAction(IPackageInstaller packageInstaller, 
-                                    TypeInfo typeInfo, 
+        public AddPackageCodeAction(IPackageInstaller packageInstaller,
+                                    IPackageIndexModelInfo packageInfo, 
                                     IEnumerable<ProjectMetadata> projects,
                                     string titleFormat, 
                                     Func<CancellationToken, Task<Document>> createChangedDocument)
         {
             _packageInstaller = packageInstaller;
-            _typeInfo = typeInfo;
+            _packageInfo = packageInfo;
             _projects = projects;
             _createChangedDocument = createChangedDocument;
             _titleFormat = titleFormat;
@@ -44,7 +44,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             {
                 if (_title == null)
                 {
-                    _title = string.Format(_titleFormat, string.Format("{0} {1}", _typeInfo.PackageName, _typeInfo.PackageVersion));
+                    _title = string.Format(_titleFormat, string.Format("{0} {1}", _packageInfo.PackageName, _packageInfo.PackageVersion));
                 }
 
                 return _title; 
@@ -85,7 +85,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             return new CodeActionOperation[]
             {
                 new ApplyChangesOperation(changedDocument.Project.Solution), // add namespace
-                new AddPackageOperation(_packageInstaller, changedDocument, _typeInfo, _projects, Title) // add package
+                new AddPackageOperation(_packageInstaller, changedDocument, _packageInfo, _projects, Title) // add package
             };
         }
     }

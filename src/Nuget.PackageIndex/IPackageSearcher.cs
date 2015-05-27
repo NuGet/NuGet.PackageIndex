@@ -12,6 +12,8 @@ namespace Nuget.PackageIndex
     /// </summary>
     public interface IPackageSearcher
     {
-        IEnumerable<TypeInfo> Search(string typeName);
+        IEnumerable<NamespaceInfo> SearchNamespace(string namespaceName);
+        IEnumerable<ExtensionInfo> SearchExtension(string extensionName);
+        IEnumerable<TypeInfo> SearchType(string typeName);
     }
 }

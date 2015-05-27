@@ -49,6 +49,9 @@
       <HintPath>..\..\packages\Microsoft.CodeAnalysis.Common.1.0.0-rc1\lib\net45\Microsoft.CodeAnalysis.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp">
+      <HintPath>..\..\..\..\..\temp\NuGet.PackageIndex\references\Microsoft.CodeAnalysis.CSharp.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CodeAnalysis.Workspaces, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.CodeAnalysis.Workspaces.dll</HintPath>
@@ -73,8 +76,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client\Analyzers\AddPackageDiagnosticAnalyzer.cs" />
+    <Compile Include="Client\StringExtensions.cs" />
+    <Compile Include="Client\ISyntaxHelper.cs" />
     <Compile Include="Client\IProjectMetadataProvider.cs" />
-    <Compile Include="Client\Analyzers\IIdentifierFilter.cs" />
     <Compile Include="Client\Analyzers\UnknownIdentifierDiagnosticAnalyzerBase.cs" />
     <Compile Include="Client\CodeFixes\IPackageInstaller.cs" />
     <Compile Include="Client\CodeFixes\AddPackageOperation.cs" />
@@ -89,6 +93,17 @@
     <Compile Include="Engine\IPackageSearchEngine.cs" />
     <Compile Include="Engine\PackageIndexError.cs" />
     <Compile Include="Engine\PackageSearchEngine.cs" />
+    <Compile Include="Models\IPackageIndexModelInfo.cs" />
+    <Compile Include="NupkgLocalPackageLoader.cs" />
+    <Compile Include="IPackageMetadata.cs" />
+    <Compile Include="ILocalPackageLoader.cs" />
+    <Compile Include="PackageMetadata.cs" />
+    <Compile Include="RoslynReflectorFactory.cs" />
+    <Compile Include="IReflectorFactory.cs" />
+    <Compile Include="Models\ExtensionInfo.cs" />
+    <Compile Include="Models\ModelHelpers.cs" />
+    <Compile Include="RoslynReflector.cs" />
+    <Compile Include="IReflector.cs" />
     <Compile Include="ILocalPackageIndexBuilder.cs" />
     <Compile Include="LocalPackageIndexBuilderResult.cs" />
     <Compile Include="LocalPackageIndexBuilder.cs" />

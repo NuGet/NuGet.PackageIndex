@@ -8,7 +8,7 @@ namespace Nuget.PackageIndex.Models
     /// <summary>
     /// Namespace metadata exposed publicly 
     /// </summary>
-    public class NamespaceInfo
+    public class NamespaceInfo : IPackageIndexModelInfo
     { 
         public string Name { get; set; }
         public string AssemblyName { get; set; }
@@ -40,6 +40,21 @@ namespace Nuget.PackageIndex.Models
         protected string GetTargetFrameworksString()
         {
             return string.Join(";", TargetFrameworks) ?? "";
+        }
+
+        public string GetFriendlyEntityName()
+        {
+            return Name;
+        }
+
+        public string GetFriendlyPackageName()
+        {
+            return string.Format("{0} {1}", PackageName, PackageVersion);
+        }
+
+        public string GetNamespace()
+        {
+            return null; // it is already a namespace , so has no parent 
         }
     }
 }

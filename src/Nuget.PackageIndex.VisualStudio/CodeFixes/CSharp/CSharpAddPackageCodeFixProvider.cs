@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.CodeFixes;
-using Nuget.PackageIndex.VisualStudio.Analyzers;
+using Nuget.PackageIndex.VisualStudio.Analyzers.CSharp;
 using Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp.Utilities;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
@@ -30,7 +30,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
 
         [ImportingConstructor]
         public CSharpAddPackageCodeFixProvider([Import]SVsServiceProvider serviceProvider)
-            : base(new PackageInstaller(serviceProvider), ProjectMetadataProvider.Instance)
+            : base(new PackageInstaller(serviceProvider), ProjectMetadataProvider.Instance, new CSharpSyntaxHelper())
         {
         }
 
@@ -83,7 +83,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
 
                 var usings = root.DescendantNodes().Where(n => n is UsingDirectiveSyntax);
                 var newNamespaceUsing = string.Format("using {0};", namespaceName);
-                if (usings.Any(x => x.ToFullString().StartsWith(newNamespaceUsing)))
+                if (usings.Any(x => x.ToString().StartsWith(newNamespaceUsing)))
                 {
                     return document;
                 }

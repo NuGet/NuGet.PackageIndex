@@ -13,5 +13,6 @@ namespace Nuget.PackageIndex
         IList<TypeInfo> GetTypes(string typeName);
         IList<PackageInfo> GetPackages(string packageName);
         IList<NamespaceInfo> GetNamespaces(string ns);
+        IList<ExtensionInfo> GetExtensions(string extension);
     }
 }

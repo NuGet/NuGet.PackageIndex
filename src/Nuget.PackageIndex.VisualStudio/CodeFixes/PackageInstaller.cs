@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -9,12 +10,11 @@ using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.CodeFixes;
 using NuGet;
+using Nuget.PackageIndex.Client;
+using Nuget.PackageIndex.Models;
 using NuGet.VisualStudio;
 using Document = Microsoft.CodeAnalysis.Document;
 using Task = System.Threading.Tasks.Task;
-using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
-using System.Collections.Generic;
-using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes
 {
@@ -48,12 +48,12 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
         }
 
         public void InstallPackage(Workspace workspace, 
-                                   Document document, 
-                                   TypeInfo typeInfo, 
+                                   Document document,
+                                   IPackageIndexModelInfo packageInfo, 
                                    IEnumerable<ProjectMetadata> projects, 
                                    CancellationToken cancellationToken = default(CancellationToken))
         {
-            Debug.Assert(typeInfo != null);
+            Debug.Assert(packageInfo != null);
 
             ThreadHelper.JoinableTaskFactory.RunAsync(async delegate {
                 foreach (var project in projects)
@@ -69,10 +69,10 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                             {
                                 if (await SafeExecuteActionAsync(
                                     delegate {
-                                        var frameworks = typeInfo.TargetFrameworks == null
+                                        var frameworks = packageInfo.TargetFrameworks == null
                                                             ? null
-                                                            : typeInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
-                                        return supportedInstaller.InstallPackageAsync(project.ProjectPath, typeInfo.PackageName, typeInfo.PackageVersion, frameworks, cancellationToken);
+                                                            : packageInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
+                                        return supportedInstaller.InstallPackageAsync(project.ProjectPath, packageInfo.PackageName, packageInfo.PackageVersion, frameworks, cancellationToken);
                                     }))
                                 {
                                     continue; // package installed successfully
@@ -103,7 +103,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                             if (await SafeExecuteActionAsync(
                                     delegate
                                     {
-                                        return installer.InstallPackageAsync(dteProject, new[] { source }, typeInfo.PackageName, typeInfo.PackageVersion, true, cancellationToken);
+                                        return installer.InstallPackageAsync(dteProject, new[] { source }, packageInfo.PackageName, packageInfo.PackageVersion, true, cancellationToken);
                                     }))
                             {
                                 break;

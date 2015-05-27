@@ -1,12 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Nuget.PackageIndex.Logging;
+using System.Collections.Generic;
+using Nuget.PackageIndex.Models;
+using Nuget.PackageIndex.Client.Analyzers;
 
 namespace Nuget.PackageIndex.Client.CodeFixes
 {
@@ -25,29 +27,38 @@ namespace Nuget.PackageIndex.Client.CodeFixes
         private readonly IPackageInstaller _packageInstaller;
         private readonly IPackageSearcher _packageSearcher;
         private readonly IProjectMetadataProvider _projectMetadataProvider;
+        private readonly ISyntaxHelper _syntaxHelper;
 
         public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, 
-                                             IProjectMetadataProvider projectMetadataProvider)
-            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)), projectMetadataProvider)
+                                             IProjectMetadataProvider projectMetadataProvider,
+                                             ISyntaxHelper syntaxHelper)
+            : this(packageInstaller, new PackageSearcher(new LogFactory(LogLevel.Quiet)), projectMetadataProvider, syntaxHelper)
         {
         }
 
         public AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, 
                                              ILog logger, 
-                                             IProjectMetadataProvider projectMetadataProvider)
-            : this(packageInstaller, new PackageSearcher(logger), projectMetadataProvider)
+                                             IProjectMetadataProvider projectMetadataProvider,
+                                             ISyntaxHelper syntaxHelper)
+            : this(packageInstaller, new PackageSearcher(logger), projectMetadataProvider, syntaxHelper)
         {
         }
 
         internal AddPackageCodeFixProviderBase(IPackageInstaller packageInstaller, 
                                                IPackageSearcher packageSearcher, 
-                                               IProjectMetadataProvider projectMetadataProvider)
+                                               IProjectMetadataProvider projectMetadataProvider,
+                                               ISyntaxHelper syntaxHelper)
         {
             _packageInstaller = packageInstaller;
             _packageSearcher = packageSearcher;
             _projectMetadataProvider = projectMetadataProvider;
+            _syntaxHelper = syntaxHelper;
         }
 
+        /// <summary>
+        /// TODO: We might wat to try to reuse Diagnostics provided here if we can pass any parameters to codefix
+        /// (create a custom descriptor etc?)
+        /// </summary>
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var document = context.Document;
@@ -79,43 +90,99 @@ namespace Nuget.PackageIndex.Client.CodeFixes
                 return;
             }
 
-            var placeSystemNamespaceFirst = true;            
-
+            var placeSystemNamespaceFirst = true;
             if (!cancellationToken.IsCancellationRequested)
             {
-                if (CanAddImport(node, cancellationToken))
+                // get distinct frameworks from all projects current file belongs to
+                var distinctTargetFrameworks = TargetFrameworkHelper.GetDistinctTargetFrameworks(projects);
+                var suggestions = new List<IPackageIndexModelInfo>(CollectNamespaceSuggestions(node, distinctTargetFrameworks));
+                suggestions.AddRange(CollectExtensionSuggestions(node, distinctTargetFrameworks));
+                suggestions.AddRange(CollectTypeSuggestions(node, distinctTargetFrameworks));
+
+                foreach (var packageInfo in suggestions.Take(MaxPackageSuggestions))
                 {
-                    var typeName = node.ToString();                    
-                    // get distinct frameworks from all projects current file belongs to
-                    var distinctTargetFrameworks = TargetFrameworkHelper.GetDistinctTargetFrameworks(projects);
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    // Note: allowHigherVersions=false here since we don't want to provide code fix that adds another 
-                    // dependency for the same package but different version, user should upgrade it on his own when
-                    // see Diagnostic suggestion
-                    var packagesWithGivenType = TargetFrameworkHelper.GetSupportedPackages(_packageSearcher.Search(typeName),
-                                                                                           distinctTargetFrameworks, 
-                                                                                           allowHigherVersions:false)
-                                                                     .Take(MaxPackageSuggestions);
-
-                    foreach (var typeInfo in packagesWithGivenType)
+                    var namespaceName = packageInfo.GetNamespace();
+                    AddPackageCodeAction action = null;
+                    if (string.IsNullOrEmpty(namespaceName))
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        var namespaceName = typeInfo.FullName.Contains(".") ? Path.GetFileNameWithoutExtension(typeInfo.FullName) : null;
-                        if (string.IsNullOrEmpty(namespaceName))
-                        {
-                            continue;
-                        }
-
-                        var action = new AddPackageCodeAction(_packageInstaller, 
-                                                                typeInfo, 
-                                                                projects.Where(x => TargetFrameworkHelper.SupportsProjectTargetFrameworks(typeInfo, x.TargetFrameworks)).ToList(), 
-                                                                ActionTitle, 
-                                                                (c) => AddImportAsync(node, namespaceName, document, placeSystemNamespaceFirst, cancellationToken));
-                        context.RegisterCodeFix(action, diagnostic);
+                        action = new AddPackageCodeAction(_packageInstaller,
+                                                                packageInfo,
+                                                                projects.Where(x => TargetFrameworkHelper.SupportsProjectTargetFrameworks(packageInfo, x.TargetFrameworks)).ToList(),
+                                                                ActionTitle,
+                                                                (c) => Task.FromResult(document));
                     }
+                    else if (CanAddImport(node, cancellationToken))
+                    {
+                        action = new AddPackageCodeAction(_packageInstaller,
+                                                                packageInfo,
+                                                                projects.Where(x => TargetFrameworkHelper.SupportsProjectTargetFrameworks(packageInfo, x.TargetFrameworks)).ToList(),
+                                                                ActionTitle,
+                                                                (c) => AddImportAsync(node, namespaceName, document, placeSystemNamespaceFirst, cancellationToken));
+                    }
+
+                    context.RegisterCodeFix(action, diagnostic);
                 }
             }
+        }
+
+        private IEnumerable<IPackageIndexModelInfo> CollectNamespaceSuggestions(SyntaxNode node, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
+        {
+            string entityName;
+            IEnumerable<IPackageIndexModelInfo> potentialSuggestions = null;
+            if (_syntaxHelper.IsImport(node, out entityName))
+            {
+                potentialSuggestions = _packageSearcher.SearchNamespace(entityName);
+            }
+
+            if (potentialSuggestions == null || !potentialSuggestions.Any())
+            {
+                return new List<IPackageIndexModelInfo>();
+            }
+
+            return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
+                                                                distinctTargetFrameworks, allowHigherVersions: true);
+        }
+
+        private IEnumerable<IPackageIndexModelInfo> CollectExtensionSuggestions(SyntaxNode node, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
+        {
+            string entityName;
+            IEnumerable<IPackageIndexModelInfo> potentialSuggestions = null;
+            if (_syntaxHelper.IsExtension(node))
+            {
+                entityName = node.ToString().NormalizeGenericName();
+
+                potentialSuggestions = _packageSearcher.SearchExtension(entityName);
+            }
+
+            if (potentialSuggestions == null || !potentialSuggestions.Any())
+            {
+                return new List<IPackageIndexModelInfo>();
+            }
+
+            return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
+                                                                distinctTargetFrameworks, allowHigherVersions: true);
+        }
+
+        private IEnumerable<IPackageIndexModelInfo> CollectTypeSuggestions(SyntaxNode node, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
+        {
+            string entityName;
+            IEnumerable<IPackageIndexModelInfo> potentialSuggestions = null;
+            if (_syntaxHelper.IsType(node))
+            {
+                entityName = node.ToString().NormalizeGenericName();
+
+                potentialSuggestions = _packageSearcher.SearchType(entityName);
+            }
+
+            if (potentialSuggestions == null || !potentialSuggestions.Any())
+            {
+                return new List<IPackageIndexModelInfo>();
+            }
+
+            return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
+                                                                distinctTargetFrameworks, allowHigherVersions: true);
         }
 
         #region Abstract methods and properties

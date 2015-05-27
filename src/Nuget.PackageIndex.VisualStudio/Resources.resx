@@ -120,11 +120,17 @@
   <data name="AddPackageDiagnosticCategory" xml:space="preserve">
     <value>Syntax</value>
   </data>
-  <data name="AddPackageDiagnosticFriendlyMessageFormat" xml:space="preserve">
-    <value>Type {0} exists in the package: {1} {2}, Supported frameworks: {3}</value>
-  </data>
   <data name="AddPackageDiagnosticTitle" xml:space="preserve">
     <value>Package is missing</value>
+  </data>
+  <data name="AddPackageForExtensionFriendlyMessageFormat" xml:space="preserve">
+    <value>Extension {0} exists in the package: {1}, Supported frameworks: {2}</value>
+  </data>
+  <data name="AddPackageForNamespaceFriendlyMessageFormat" xml:space="preserve">
+    <value>Namespace {0} exists in the package: {1}, Supported frameworks: {2}</value>
+  </data>
+  <data name="AddPackageForTypeFriendlyMessageFormat" xml:space="preserve">
+    <value>Type {0} exists in the package: {1}, Supported frameworks: {2}</value>
   </data>
   <data name="AddPackageTitleFormat" xml:space="preserve">
     <value>Add package {0}</value>

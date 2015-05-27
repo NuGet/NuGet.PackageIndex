@@ -16,19 +16,14 @@ namespace Nuget.PackageIndex.Client.Analyzers
     /// <typeparam name="TSimpleNameSyntax">Specifies simple name syntax</typeparam>
     /// <typeparam name="TQualifiedNameSyntax">Specifies qualified name syntax</typeparam>
     /// <typeparam name="TIdentifierNameSyntax">Specifies identifier name syntax</typeparam>
-    public abstract class UnknownIdentifierDiagnosticAnalyzerBase<TLanguageKindEnum, TSimpleNameSyntax, TQualifiedNameSyntax, TIdentifierNameSyntax> : DiagnosticAnalyzer
+    /// <typeparam name="TGenericNameSyntax">Specifies generic name syntax</typeparam>
+    public abstract class UnknownIdentifierDiagnosticAnalyzerBase<TLanguageKindEnum, TSimpleNameSyntax, TQualifiedNameSyntax, TIdentifierNameSyntax, TGenericNameSyntax> : DiagnosticAnalyzer
         where TLanguageKindEnum : struct
         where TSimpleNameSyntax : SyntaxNode
         where TQualifiedNameSyntax : SyntaxNode
         where TIdentifierNameSyntax : SyntaxNode
-    {
-        private readonly IEnumerable<IIdentifierFilter> _identifierFilters;
-
-        public UnknownIdentifierDiagnosticAnalyzerBase(IEnumerable<IIdentifierFilter> identifierFilters)
-        {
-            _identifierFilters = identifierFilters;
-        }
-        
+        where TGenericNameSyntax : SyntaxNode
+    {       
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
         {
             get
@@ -56,16 +51,17 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
         private void AnalyzeNodeInternal(SyntaxNodeAnalysisContext context)
         {
-            var identifierNameSyntaxNode = (TIdentifierNameSyntax)context.Node;
-
-            Func<SyntaxNode, bool> isQualifiedOrSimpleName = (SyntaxNode n) => n is TQualifiedNameSyntax || n is TSimpleNameSyntax;
-
-            if (!isQualifiedOrSimpleName(identifierNameSyntaxNode))
+            Func<SyntaxNode, bool> isSupportedSyntax = (SyntaxNode n) => n is TQualifiedNameSyntax 
+                                                                            || n is TSimpleNameSyntax
+                                                                            || n is TIdentifierNameSyntax
+                                                                            || n is TGenericNameSyntax;
+             
+            if (!isSupportedSyntax(context.Node))
             {
                 return;
             }
 
-            var identifierSymbolInfo = context.SemanticModel.GetSymbolInfo(identifierNameSyntaxNode);
+            var identifierSymbolInfo = context.SemanticModel.GetSymbolInfo(context.Node);
             if (identifierSymbolInfo.Symbol != null 
                 || identifierSymbolInfo.CandidateSymbols.Any()
                 || identifierSymbolInfo.CandidateReason == CandidateReason.LateBound)
@@ -73,16 +69,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
                 return;
             }
 
-            // check if unknown identifier is really unknown type or id, and not one of the corner cases
-            // where identifier can not be bind to symbol, but is actually legal. For example, 
-            // using IType=System.Type, here IType would be also unknown identifier for us, but we don't
-            // need to suggest any fixes. 
-            if (!_identifierFilters.All(x => x.ShouldDisplayDiagnostic(identifierNameSyntaxNode)))
-            {
-                return;
-            }
-
-            var messages = AnalyzeNode(identifierNameSyntaxNode);
+            var messages = AnalyzeNode(context);
             if (messages == null)
             {
                 return;
@@ -90,7 +77,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
             foreach(var message in messages)
             {
-                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptor, identifierNameSyntaxNode.GetLocation(), message));
+                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptor, context.Node.GetLocation(), message));
             }
         }
 
@@ -98,7 +85,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
         protected abstract DiagnosticDescriptor DiagnosticDescriptor { get; }
         protected abstract ImmutableArray<TLanguageKindEnum> SyntaxKindsOfInterest { get; }
-        protected abstract IEnumerable<string> AnalyzeNode(TIdentifierNameSyntax node);
+        protected abstract IEnumerable<string> AnalyzeNode(SyntaxNodeAnalysisContext context);
 
         #endregion
     }

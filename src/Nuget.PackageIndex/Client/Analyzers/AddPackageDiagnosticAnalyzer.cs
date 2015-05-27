@@ -5,7 +5,8 @@ using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using NuGet;
 using Nuget.PackageIndex.Logging;
-using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
+using Nuget.PackageIndex.Models;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Nuget.PackageIndex.Client.Analyzers
 {
@@ -17,41 +18,43 @@ namespace Nuget.PackageIndex.Client.Analyzers
     /// <typeparam name="TSimpleNameSyntax">Specifies simple name syntax</typeparam>
     /// <typeparam name="TQualifiedNameSyntax">Specifies qualified name syntax</typeparam>
     /// <typeparam name="TIdentifierNameSyntax">Specifies identifier name syntax</typeparam>
-    public abstract class AddPackageDiagnosticAnalyzer<TLanguageKindEnum, TSimpleNameSyntax, TQualifiedNameSyntax, TIdentifierNameSyntax> 
-        : UnknownIdentifierDiagnosticAnalyzerBase<TLanguageKindEnum, TSimpleNameSyntax, TQualifiedNameSyntax, TIdentifierNameSyntax>
+    public abstract class AddPackageDiagnosticAnalyzer<TLanguageKindEnum, TSimpleNameSyntax, TQualifiedNameSyntax, TIdentifierNameSyntax, TGenericNameSyntax> 
+        : UnknownIdentifierDiagnosticAnalyzerBase<TLanguageKindEnum, TSimpleNameSyntax, TQualifiedNameSyntax, TIdentifierNameSyntax, TGenericNameSyntax>
         where TLanguageKindEnum : struct
         where TSimpleNameSyntax : SyntaxNode
         where TQualifiedNameSyntax : SyntaxNode
         where TIdentifierNameSyntax : SyntaxNode
+        where TGenericNameSyntax : SyntaxNode
     {
-        // we want to limit number of suggsted packages, to avoid rare cases when user had 
+        // we want to limit number of suggested packages, to avoid rare cases when user had 
         // too many packages with the same type (since it would create super long list of suggestions,
         // which would be not that usable anyway).
         internal const int MaxPackageSuggestions = 5;
+        private const string DefaultSuggestionFormat = "{0} {1} {2}"; // should have 3 placeholders name, package info, target frameworks
 
         private readonly IPackageSearcher _packageSearcher;
         private readonly IProjectMetadataProvider _projectMetadataProvider;
-        
-        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, 
-                                            IProjectMetadataProvider projectMetadataProvider)
-            : this(new PackageSearcher(new LogFactory(LogLevel.Quiet)), identifierFilters, projectMetadataProvider)
+        private readonly ISyntaxHelper _syntaxHelper;
+
+        public AddPackageDiagnosticAnalyzer(IProjectMetadataProvider projectMetadataProvider, ISyntaxHelper syntaxHelper)
+            : this(new PackageSearcher(new LogFactory(LogLevel.Quiet)), projectMetadataProvider, syntaxHelper)
         {
         }
 
-        public AddPackageDiagnosticAnalyzer(IEnumerable<IIdentifierFilter> identifierFilters, 
-                                            IProjectMetadataProvider projectMetadataProvider, 
-                                            ILog logger)
-            : this(new PackageSearcher(logger), identifierFilters, projectMetadataProvider)
+        public AddPackageDiagnosticAnalyzer(IProjectMetadataProvider projectMetadataProvider, 
+                                            ILog logger,
+                                            ISyntaxHelper syntaxHelper)
+            : this(new PackageSearcher(logger), projectMetadataProvider, syntaxHelper)
         {
         }
 
         internal AddPackageDiagnosticAnalyzer(IPackageSearcher packageSearcher, 
-                                              IEnumerable<IIdentifierFilter> identifierFilters, 
-                                              IProjectMetadataProvider projectMetadataProvider)
-            : base(identifierFilters)
+                                              IProjectMetadataProvider projectMetadataProvider,
+                                              ISyntaxHelper syntaxHelper)
         {
             _packageSearcher = packageSearcher;
             _projectMetadataProvider = projectMetadataProvider;
+            _syntaxHelper = syntaxHelper;
         }
 
         /// <summary>
@@ -65,24 +68,55 @@ namespace Nuget.PackageIndex.Client.Analyzers
         /// work at csc.exe level (in command line for example) and there no container objects defined
         /// at that time.
         /// </summary>
-        protected override IEnumerable<string> AnalyzeNode(TIdentifierNameSyntax node)
+        protected override IEnumerable<string> AnalyzeNode(SyntaxNodeAnalysisContext context)
         {
-            var projects = _projectMetadataProvider.GetProjects(node.GetLocation().SourceTree.FilePath);
+            var projects = _projectMetadataProvider.GetProjects(context.Node.GetLocation().SourceTree.FilePath);
             if (projects == null || !projects.Any())
             {
                 // project is unsupported
                 return null;
             }
 
-            var typeName = node.ToString();
-            var packagesWithGivenType = _packageSearcher.Search(typeName);
-            if (!packagesWithGivenType.Any())
+            if (!_syntaxHelper.IsSupported(context.Node))
             {
                 return null;
             }
 
+
             // get distinct frameworks from all projects current file belongs to
             var distinctTargetFrameworks = TargetFrameworkHelper.GetDistinctTargetFrameworks(projects);
+            var suggestions = new List<string>(CollectNamespaceSuggestions(context, distinctTargetFrameworks));
+            suggestions.AddRange(CollectExtensionSuggestions(context, distinctTargetFrameworks));
+            suggestions.AddRange(CollectTypeSuggestions(context, distinctTargetFrameworks));
+
+            return suggestions.Take(MaxPackageSuggestions);
+        }
+
+        private IEnumerable<string> CollectNamespaceSuggestions(SyntaxNodeAnalysisContext context, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
+        {
+            var defaultResult = new List<string>();
+            string entityName;
+            IEnumerable<IPackageIndexModelInfo> potentialSuggestions = null;
+            if (!_syntaxHelper.IsImport(context.Node, out entityName))
+            {
+                return defaultResult;
+            }
+
+            // if we are here, check if previous namespace is known, if it is
+            // not we already did show suggestion, so skip it here
+            var previousNode = context.Node.Parent.ChildNodes().First();
+            var previousSymbol = context.SemanticModel.GetSymbolInfo(context.Node.Parent.ChildNodes().First());
+            if (!previousNode.Equals(context.Node)
+                && previousSymbol.Symbol == null)
+            {
+                return defaultResult;
+            }
+
+            potentialSuggestions = _packageSearcher.SearchNamespace(entityName);
+            if (potentialSuggestions == null || !potentialSuggestions.Any())
+            {
+                return new List<string>();
+            }
 
             // Note: allowHigherVersions=true here since we want to show diagnostic message for type if it exists in some package 
             // for discoverability (tooltip) but we would not supply a code fix if package already installed in the project with 
@@ -90,17 +124,89 @@ namespace Nuget.PackageIndex.Client.Analyzers
             // Note2: the problem here is that we don't know if type exist in older versions of the package or not and to store 
             // all package versions in index might slow things down. If we receive feedback that we need ot be more smart here 
             // we should consider adding all package versions to the local index.
-            var supportedPackages = TargetFrameworkHelper.GetSupportedPackages(packagesWithGivenType,
-                                                            distinctTargetFrameworks, allowHigherVersions: true);
-            return GetFriendlyPackagesString(supportedPackages.Take(MaxPackageSuggestions));
+            var supportedSuggestions = TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
+                                                                distinctTargetFrameworks, allowHigherVersions: true);
+
+            return GetFriendlySuggestionsString(FriendlyNamespaceMessageFormat, supportedSuggestions);
         }
 
-        private IEnumerable<string> GetFriendlyPackagesString(IEnumerable<TypeInfo> types)
+        private IEnumerable<string> CollectExtensionSuggestions(SyntaxNodeAnalysisContext context, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
         {
-            foreach (var t in types)
+            var defaultResult = new List<string>();
+            string entityName;
+            IEnumerable<ExtensionInfo> potentialSuggestions = null;
+            if (!_syntaxHelper.IsExtension(context.Node))
+            {
+                return defaultResult;
+            }
+
+            // if we are here, node looks like possible extension method invocation,
+            // now we need to check type of the invoker object in order to suggest 
+            // extensions  for corresponding types only
+            var parentTypeSymbol = context.SemanticModel.GetTypeInfo(context.Node.Parent.ChildNodes().First());
+            if (parentTypeSymbol.Type == null 
+                || parentTypeSymbol.Type.Kind == SymbolKind.ErrorType)
+            {
+                return defaultResult;
+            }
+
+            entityName = context.Node.ToString().NormalizeGenericName();
+            var extensionFullName = parentTypeSymbol.Type.ToString().NormalizeGenericName() + "." + entityName;
+
+            potentialSuggestions = _packageSearcher.SearchExtension(entityName);
+            // select only extensions that have same parent (this) type as given symbol
+            potentialSuggestions = potentialSuggestions.Where(x => x.FullName.Equals(extensionFullName));
+            if (potentialSuggestions == null || !potentialSuggestions.Any())
+            {
+                return defaultResult;
+            }
+
+            // Note: allowHigherVersions=true here since we want to show diagnostic message for type if it exists in some package 
+            // for discoverability (tooltip) but we would not supply a code fix if package already installed in the project with 
+            // any version, user needs to upgrade on his own.
+            // Note2: the problem here is that we don't know if type exist in older versions of the package or not and to store 
+            // all package versions in index might slow things down. If we receive feedback that we need ot be more smart here 
+            // we should consider adding all package versions to the local index.
+            var supportedSuggestions = TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
+                                                                distinctTargetFrameworks, allowHigherVersions: true);
+
+            return GetFriendlySuggestionsString(FriendlyExtensionMessageFormat, supportedSuggestions);
+        }
+
+        private IEnumerable<string> CollectTypeSuggestions(SyntaxNodeAnalysisContext context, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
+        {
+            string entityName;
+            IEnumerable<IPackageIndexModelInfo> potentialSuggestions = null;
+            if (_syntaxHelper.IsType(context.Node))
+            {
+                entityName = context.Node.ToString().NormalizeGenericName();
+
+                potentialSuggestions = _packageSearcher.SearchType(entityName);
+            }
+
+            if (potentialSuggestions == null || !potentialSuggestions.Any())
+            {
+                return new List<string>();
+            }
+
+            // Note: allowHigherVersions=true here since we want to show diagnostic message for type if it exists in some package 
+            // for discoverability (tooltip) but we would not supply a code fix if package already installed in the project with 
+            // any version, user needs to upgrade on his own.
+            // Note2: the problem here is that we don't know if type exist in older versions of the package or not and to store 
+            // all package versions in index might slow things down. If we receive feedback that we need ot be more smart here 
+            // we should consider adding all package versions to the local index.
+            var supportedSuggestions = TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
+                                                                distinctTargetFrameworks, allowHigherVersions: true);
+
+            return GetFriendlySuggestionsString(FriendlyTypeMessageFormat, supportedSuggestions);
+        }
+
+        private IEnumerable<string> GetFriendlySuggestionsString(string format, IEnumerable<IPackageIndexModelInfo> suggestions)
+        {
+            foreach (var t in suggestions)
             {
                 var targetFrameworks = string.Join(";", t.TargetFrameworks.Select(x => GetFrameworkFriendlyName(x)));
-                yield return string.Format(FriendlyMessageFormat, t.FullName, t.PackageName, t.PackageVersion, targetFrameworks);
+                yield return string.Format(format, t.GetFriendlyEntityName(), t.GetFriendlyPackageName(), targetFrameworks);
             }
         }
 
@@ -122,12 +228,31 @@ namespace Nuget.PackageIndex.Client.Analyzers
             return result + "-" + normalizedFrameworkName.Profile;
         }
 
-        #region Abstract methods and properties
+        #region Abstract and virtual methods and properties
 
-        /// <summary>
-        /// Allow to overwrite it in concrete implementations to support other locales
-        /// </summary>
-        protected abstract string FriendlyMessageFormat { get; }
+        protected virtual string FriendlyNamespaceMessageFormat
+        {
+            get
+            {
+                return DefaultSuggestionFormat;
+            }
+        }
+
+        protected virtual string FriendlyExtensionMessageFormat
+        {
+            get
+            {
+                return DefaultSuggestionFormat;
+            }
+        }
+
+        protected virtual string FriendlyTypeMessageFormat
+        {
+            get
+            {
+                return DefaultSuggestionFormat;
+            }
+        }
 
         #endregion
     }
