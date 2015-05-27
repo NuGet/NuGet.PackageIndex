@@ -112,7 +112,7 @@ namespace Nuget.PackageIndex.Client
                         {
                             var projecsPackageVersion = new SemanticVersion(p.Value);
                             // if project has package with given name and version less than in index
-                            return p.Key.Equals(packageInfo.PackageName) && projecsPackageVersion < packageVersion;
+                            return p.Key.Equals(packageInfo.PackageName) && projecsPackageVersion <= packageVersion;
                         }
                 ));
             }
