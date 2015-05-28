@@ -38,6 +38,7 @@ namespace Nuget.PackageIndex.VisualStudio
         {
             if (node.GetAncestor<UsingDirectiveSyntax>() != null
                 || node.Parent is NameMemberCrefSyntax
+                || node.Parent is XmlCrefAttributeSyntax
                 || node.Parent is XmlNameAttributeSyntax
                 || node.Parent is MemberBindingExpressionSyntax
                 || node.Parent is ConditionalAccessExpressionSyntax)
