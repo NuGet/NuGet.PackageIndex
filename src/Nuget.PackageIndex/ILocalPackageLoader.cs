@@ -11,7 +11,11 @@ namespace Nuget.PackageIndex
     /// </summary>
     internal interface ILocalPackageLoader
     {
-        IEnumerable<IPackageMetadata> DiscoverPackages(IEnumerable<string> sourcePaths, bool newOnly, DateTime lastCheckTime, CancellationToken cancellationToken);
+        IEnumerable<IPackageMetadata> DiscoverPackages(IEnumerable<string> sourcePaths, 
+                                                      HashSet<string> indexedPackages, 
+                                                      bool newOnly, 
+                                                      DateTime lastIndexModifiedTime, 
+                                                      CancellationToken cancellationToken);
         IPackageMetadata GetPackageMetadataFromPath(string packagePath);
     }
 }

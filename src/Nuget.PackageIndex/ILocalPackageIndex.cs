@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Nuget.PackageIndex.Engine;
+using Nuget.PackageIndex.Models;
 
 namespace Nuget.PackageIndex
 {
@@ -17,6 +18,7 @@ namespace Nuget.PackageIndex
         string Location { get; }
         IList<PackageIndexError> AddPackage(IPackageMetadata package, bool force);
         IList<PackageIndexError> RemovePackage(string packageName);
+        IList<PackageInfo> GetPackages();
         IList<PackageIndexError> Clean();
     }
 }

@@ -11,6 +11,7 @@ namespace Nuget.PackageIndex.Models
         internal const float PackageNameFieldBoost = 2f; // boost name, since t is a primary ID
         internal const string PackageNameField = "PackageName";
         internal const string PackageVersionField = "PackageVersion";
+        internal const string PackagePathField = "PackagePath";
 
         public object TypeHashField { get; private set; }
 
@@ -22,6 +23,7 @@ namespace Nuget.PackageIndex.Models
         {
             Name = document.Get(PackageNameField);
             Version = document.Get(PackageVersionField);
+            Path = document.Get(PackagePathField);
         }
 
         public Document ToDocument()
@@ -31,9 +33,11 @@ namespace Nuget.PackageIndex.Models
             var packageName = new Field(PackageNameField, Name, Field.Store.YES, Field.Index.ANALYZED, Field.TermVector.NO);
             packageName.Boost = PackageNameFieldBoost;
             var packageVersion = new Field(PackageVersionField, Version, Field.Store.YES, Field.Index.NO, Field.TermVector.NO);
+            var packagePath = new Field(PackagePathField, Path, Field.Store.YES, Field.Index.NO, Field.TermVector.NO);
 
             document.Add(packageName);
             document.Add(packageVersion);
+            document.Add(packagePath);
 
             return document;
         }
@@ -48,7 +52,8 @@ namespace Nuget.PackageIndex.Models
             return new PackageInfo
             {
                 Name = Name,
-                Version = Version
+                Version = Version,
+                Path = Path
             };
         }
     }

@@ -107,6 +107,7 @@ namespace Nuget.PackageIndex.Client.CodeFixes
                     AddPackageCodeAction action = null;
                     if (string.IsNullOrEmpty(namespaceName))
                     {
+                        // namspaces suggestions don't need to add another namespace
                         action = new AddPackageCodeAction(_packageInstaller,
                                                                 packageInfo,
                                                                 projects.Where(x => TargetFrameworkHelper.SupportsProjectTargetFrameworks(packageInfo, x.TargetFrameworks)).ToList(),

@@ -13,7 +13,7 @@ namespace Nuget.PackageIndex
     {
         ILocalPackageIndex Index { get; }
         IEnumerable<string> GetPackageDirectories();
-        Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly, CancellationToken cancellationToken);
+        Task<LocalPackageIndexBuilderResult> BuildAsync(bool shouldClean, bool newOnly, CancellationToken cancellationToken);
         LocalPackageIndexBuilderResult Clean();
         LocalPackageIndexBuilderResult Rebuild();
         LocalPackageIndexBuilderResult AddPackage(string nupkgFilePath, bool force);

@@ -134,13 +134,6 @@ namespace Nuget.PackageIndex
                 var reflector = ReflectorFactory.Create(package.Id, package.Version, package.TargetFrameworks);
                 foreach (var assemblyPath in package.Assemblies)
                 {
-                    //// if dll is a contracts dll it provides types accross all frameworks supported by package
-                    //var dllTtargetFrameworks = packageTargetFrameworks;
-                    //if (dll.TargetFramework != null && !dll.Path.ToLower().Contains(@"lib\contract"))
-                    //{
-                    //    dllTtargetFrameworks = new[] { dll.TargetFramework };
-                    //}
-
                     Logger.WriteVerbose("Processing assembly {0}.", assemblyPath);
                     reflector.ProcessAssembly(assemblyPath);
                 }
@@ -150,14 +143,15 @@ namespace Nuget.PackageIndex
                     new PackageModel
                     {
                         Name = package.Id,
-                        Version = package.Version.ToString()
+                        Version = package.Version.ToString(),
+                        Path = package.LocalPath
                     });
 
                 Logger.WriteVerbose("Storing type models to the index.");
-                result.AddRange(Engine.AddEntries(reflector.Types, true));
+                result.AddRange(Engine.AddEntries(reflector.Types, false));
 
                 Logger.WriteVerbose("Storing namespaces to the index.");
-                result.AddRange(Engine.AddEntries(reflector.Namespaces, true));
+                result.AddRange(Engine.AddEntries(reflector.Namespaces, false));
 
                 Logger.WriteVerbose("Storing extensions to the index.");
                 result.AddRange(Engine.AddEntries(reflector.Extensions, true));
@@ -206,8 +200,26 @@ namespace Nuget.PackageIndex
 
         private IList<PackageModel> GetPackagesInternal(string packageName)
         {
-            return Engine.Search(new TermQuery(new Term(PackageModel.PackageNameField, packageName)), MaxTypesExpected)
-                         .Select(x => new PackageModel(x)).ToList();
+            int maxResults = 0;
+            Query query = null;
+            if (string.IsNullOrEmpty(packageName))
+            {
+                query = new WildcardQuery(new Term(PackageModel.PackageNameField, "*"));
+            }
+            else
+            {
+                maxResults = MaxTypesExpected;
+                query = new TermQuery(new Term(PackageModel.PackageNameField, packageName));
+            }
+
+            return Engine.Search(query, maxResults)
+                         .Select(x => new PackageModel(x))
+                         .ToList();
+        }
+
+        public IList<PackageInfo> GetPackages()
+        {
+            return GetPackages(null);
         }
 
         public IList<PackageInfo> GetPackages(string packageName)
@@ -242,8 +254,6 @@ namespace Nuget.PackageIndex
 
         private IList<TypeModel> GetTypesInPackage(string packageName)
         {
-            // TODO new ConstantScoreQuery(TermFilter)
-            // new Term(pq.Prefix.Field, pq.Prefix.Text + "*")
             return Engine.Search(new TermQuery(new Term(TypeModel.TypePackageNameField, packageName)))
                          .Select(x => new TypeModel(x)).ToList();
         }

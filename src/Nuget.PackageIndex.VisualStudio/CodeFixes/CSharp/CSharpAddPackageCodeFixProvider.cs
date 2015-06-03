@@ -11,8 +11,8 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.CodeFixes;
-using Nuget.PackageIndex.VisualStudio.Analyzers.CSharp;
 using Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp.Utilities;
+using Microsoft.VisualStudio.ComponentModelHost;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
 {
@@ -23,30 +23,56 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = ProviderName), Shared]
     public sealed class CSharpAddPackageCodeFixProvider : AddPackageCodeFixProviderBase
     {
-        // This is a code fix provider's name when it appears in the list of all 
-        // analyzers in VS. 
-        // TODO: Should it also be localized?
-        private const string ProviderName = "Add Missing Package";
+        private const string DefaultTitleFormat = "Add package {0}";
+        private const string TitleHostResourceId = "AddPackageTitleFormat";
+        private const string ProviderName = "AddPackage";
+        private readonly SVsServiceProvider _serviceProvider;
 
         [ImportingConstructor]
         public CSharpAddPackageCodeFixProvider([Import]SVsServiceProvider serviceProvider)
             : base(new PackageInstaller(serviceProvider), ProjectMetadataProvider.Instance, new CSharpSyntaxHelper())
         {
+            _serviceProvider = serviceProvider;
         }
+
+        private const string CS1061 = "CS1061"; // error CS1061: 'C' does not contain a definition for 'Foo' and no extension method 'Foo' accepting a first argument of type 'C' could be found
+        private const string CS0103 = "CS0103"; // error CS0103: The name 'Foo' does not exist in the current context
+        private const string CS0246 = "CS0246"; // error CS0246: The type or namespace name 'Version' could not be found
+        private const string CS0234 = "CS0234"; // error CS0234: The type or namespace name 'Abc' does not exist in the namespace 'Bar' (are you missing an assembly reference?)
 
         public override ImmutableArray<string> FixableDiagnosticIds
         {
             get
             {
-                return ImmutableArray.Create(CSharpAddPackageDiagnosticAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(CS1061, CS0103, CS0246, CS0234);
             }
         }
 
+        private string _actionTitle;
         protected override string ActionTitle
         {
             get
             {
-                return Resources.AddPackageTitleFormat;
+                if (string.IsNullOrEmpty(_actionTitle))
+                {
+                    var container = _serviceProvider.GetService<IComponentModel, SComponentModel>();
+                    if (container != null)
+                    {
+                        var resourceProvider = container.DefaultExportProvider.GetExportedValue<IPackageIndexHostResourceProvider>();
+
+                        if (resourceProvider != null)
+                        {
+                            _actionTitle = resourceProvider.GetResourceString(TitleHostResourceId);
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(_actionTitle))
+                    {
+                        _actionTitle = DefaultTitleFormat;
+                    }
+                }
+
+                return _actionTitle;
             }
         }
 

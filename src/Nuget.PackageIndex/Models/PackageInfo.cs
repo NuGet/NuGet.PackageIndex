@@ -8,12 +8,14 @@ namespace Nuget.PackageIndex.Models
     {
         public string Name { get; set; }
         public string Version { get; set; }
+        public string Path { get; set; }
 
         public override string ToString()
         {
             var stringBuilder = new StringBuilder();
             stringBuilder.Append(Name)
-                         .Append(Version);
+                         .Append(Version)
+                         .Append(Path);
 
             return stringBuilder.ToString();
         }

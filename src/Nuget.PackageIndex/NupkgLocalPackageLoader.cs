@@ -19,10 +19,14 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Discovers packages from nupkg files under given source paths
         /// </summary>
-        public IEnumerable<IPackageMetadata> DiscoverPackages(IEnumerable<string> sourcePaths, bool newOnly, DateTime lastCheckTime, CancellationToken cancellationToken)
+        public IEnumerable<IPackageMetadata> DiscoverPackages(IEnumerable<string> sourcePaths, 
+                                                              HashSet<string> indexedPackages, 
+                                                              bool newOnly, 
+                                                              DateTime lastIndexModifiedTime, 
+                                                              CancellationToken cancellationToken)
         {
             var result = new List<IPackageMetadata>();
-            var nupkgFiles = GetPackages(sourcePaths, newOnly, lastCheckTime, cancellationToken);
+            var nupkgFiles = GetPackages(sourcePaths, indexedPackages, newOnly, lastIndexModifiedTime, cancellationToken);
             foreach (var nupkgFile in nupkgFiles)
             {
                 var newPackage = GetPackageMetadataFromPath(nupkgFile);
@@ -60,13 +64,28 @@ namespace Nuget.PackageIndex
                     var packageFolder = Path.GetDirectoryName(nupkgFilePath) ?? "";
                     var assemblies = package.GetLibFiles().Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase));
 
+                    var assemblyPaths = new List<string>();
+                    foreach (var assembly in assemblies)
+                    {
+                        var assemblyFullPath = Path.Combine(packageFolder, assembly.Path);
+                        if (!File.Exists(assemblyFullPath))
+                        {
+                            assemblyFullPath = Path.Combine(packageFolder, Path.GetFileNameWithoutExtension(nupkgFilePath), assembly.Path);
+                        }
+
+                        if (File.Exists(assemblyFullPath))
+                        {
+                            assemblyPaths.Add(assemblyFullPath);
+                        }
+                    }
+
                     var newPackageMetadata = new PackageMetadata
                     {
                         Id = package.Id,
                         Version = package.Version.ToString(),
                         LocalPath = nupkgFilePath,
                         TargetFrameworks = package.GetSupportedFrameworks().Select(x => VersionUtility.GetShortFrameworkName(x)),
-                        Assemblies = assemblies == null ? new List<string>() : assemblies.Select(x => Path.Combine(packageFolder, x.Path))
+                        Assemblies = assemblyPaths
                     };
 
                     return newPackageMetadata;
@@ -83,7 +102,11 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Getting packages from given local folders that contain nupkg files.
         /// </summary>
-        private IEnumerable<string> GetPackages(IEnumerable<string> sourcePaths, bool newOnly, DateTime lastCheckTime, CancellationToken cancellationToken)
+        private IEnumerable<string> GetPackages(IEnumerable<string> sourcePaths, 
+                                                HashSet<string> indexedPackages, 
+                                                bool newOnly,
+                                                DateTime lastIndexModifiedTime, 
+                                                CancellationToken cancellationToken)
         {
             var packages = new List<string>();
             foreach (var source in sourcePaths)
@@ -103,7 +126,14 @@ namespace Nuget.PackageIndex
                             return null;
                         }
 
-                        if (newOnly && File.GetLastWriteTime(nupkgFile) <= lastCheckTime)
+                        if (newOnly)
+                        {
+                            if (File.GetLastWriteTime(nupkgFile) <= lastIndexModifiedTime)
+                            {
+                                continue;
+                            }
+                        }
+                        else if (indexedPackages != null && indexedPackages.Contains(nupkgFile))
                         {
                             continue;
                         }

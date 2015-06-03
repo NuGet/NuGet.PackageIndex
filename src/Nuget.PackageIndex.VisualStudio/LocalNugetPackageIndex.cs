@@ -5,7 +5,6 @@ using System;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nuget.PackageIndex.VisualStudio
@@ -14,17 +13,29 @@ namespace Nuget.PackageIndex.VisualStudio
     /// Should be exported by project systems that update local nuget packages,
     /// to refresh local package index
     /// </summary>
-    [Export]
-    [Export(typeof(ILocalNugetPackageIndex))]
-    public class LocalNugetPackageIndex : ILocalNugetPackageIndex
+    public sealed class LocalNugetPackageIndex : ILocalNugetPackageIndex
     {
+        private static LocalNugetPackageIndex _instance;
+        public static LocalNugetPackageIndex Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new LocalNugetPackageIndex();
+                }
+
+                return _instance;
+            }
+        }
+
         private const string IndexIDEVersionFile = "ide.txt";
 
-        private Task _indexBuildTask;
+        private static  Task _indexBuildTask;
         private IPackageIndexFactory _indexFactory;
         private ILocalPackageIndexBuilder _indexBuilder;
 
-        public LocalNugetPackageIndex()
+        private LocalNugetPackageIndex()
         {
             _indexFactory = new PackageIndexFactory();
             _indexBuilder = _indexFactory.GetLocalIndexBuilder(createIfNotExists: false);
@@ -82,12 +93,12 @@ namespace Nuget.PackageIndex.VisualStudio
                 _indexBuilder.Clean();
             }
 
-            Synchronize(force:true);
+            Synchronize(shouldClean: shouldClean, force: true);
         }
 
         public void Synchronize()
         {
-            Synchronize(force: false);
+            Synchronize(shouldClean: false, force: false);
         }
 
         public void Detach()
@@ -97,13 +108,13 @@ namespace Nuget.PackageIndex.VisualStudio
 
         #endregion
 
-        private void Synchronize(bool force)
+        private void Synchronize(bool shouldClean, bool force)
         {
             try
             {
                 if (_indexBuildTask == null || _indexBuildTask.IsCompleted)
                 {
-                    RebuildIndex(force);
+                    RebuildIndex(shouldClean, force);
                 }
                 else
                 {
@@ -112,7 +123,7 @@ namespace Nuget.PackageIndex.VisualStudio
                     // This is to avoid resync 10 times when there multiple synchronize 
                     // requests come and we don't need actually to rebuild index for them 
                     // all, but just for the first and maybe the last one
-                    _indexBuildTask.ContinueWith(t => RebuildIndex(force));
+                    _indexBuildTask.ContinueWith(t => RebuildIndex(shouldClean, force));
                 }
             }
             catch (Exception e)
@@ -121,7 +132,7 @@ namespace Nuget.PackageIndex.VisualStudio
             }
         }
 
-        private void RebuildIndex(bool force)
+        private void RebuildIndex(bool shouldClean, bool force)
         {
             // Fire and forget. When new package is installed, we are not just adding this package to the index,
             // but instead we attempt full sync. Full sync in this case would only sync new packages that don't 
@@ -129,7 +140,7 @@ namespace Nuget.PackageIndex.VisualStudio
             // instances of VS and each tries to update index at the same tiime, only one would succeed, other 
             // would notive that index is locked and skip this operation. Thus if all VS instances attempt full 
             // sync at least one of them would do it and add all new packages to the index.
-            _indexBuildTask = _indexBuilder.BuildAsync(newOnly: _indexBuilder.Index.IndexExists && !force, 
+            _indexBuildTask = _indexBuilder.BuildAsync(shouldClean:shouldClean, newOnly: _indexBuilder.Index.IndexExists && !force, 
                                                        cancellationToken: _indexFactory.GetCancellationToken());
         }
 

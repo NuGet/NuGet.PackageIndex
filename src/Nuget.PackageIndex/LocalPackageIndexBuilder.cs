@@ -4,6 +4,7 @@ using Nuget.PackageIndex.Engine;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,41 +78,75 @@ namespace Nuget.PackageIndex
             return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x));
         }
 
-        public Task<LocalPackageIndexBuilderResult> BuildAsync(bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken))
+         public Task<LocalPackageIndexBuilderResult> BuildAsync(bool shouldClean = false, bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken))
         {
+            // Fire and forget. While index is building, it will be locked from
+            // other write attempts. In meanwhile readers would just not be able 
+            // to find any types, but will be still operatable (when an instance of 
+            // a reader is created it can return data from the snapshot before next
+            // write happened).
+
             return Task.Run(() =>
             {
-                // Fire and forget. While index is building, it will be locked from
-                // other write attempts. In meanwhile readers would just not be able 
-                // to find any types, but will be still operatable (when an instance of 
-                // a reader is created it can return data from the snapshot before next
-                // write happened).
+                bool success = true;
                 _logger.WriteInformation("Started building index.");
                 var stopWatch = Stopwatch.StartNew();
 
-                // now get all known packages and add them to index again
-                if (newOnly)
+                try
                 {
-                    _logger.WriteVerbose("Looking only for new packages...");
-                }
-                else
-                {
-                    _logger.WriteVerbose("Looking all existing packages...");
-                }
-
-                var packages = _discoverer.DiscoverPackages(_packageSources, newOnly, _index.LastWriteTime, cancellationToken).ToList();
-                _logger.WriteVerbose("Found {0} packages to be added to the index.", packages.Count());
-
-                bool success = true;
-                foreach (var package in packages)
-                {
-                    if (cancellationToken != null && cancellationToken.IsCancellationRequested)
+                    if (shouldClean)
                     {
-                        return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed }; ;
+                        // if we cleaned index , we should add all packages, not only new
+                        Clean();
+                        newOnly = false;
                     }
 
-                    var errors = _index.AddPackage(package, force: false);
-                    success &= (errors == null || !errors.Any());
+                    if (newOnly)
+                    {
+                        _logger.WriteVerbose("Indexing only new packages...");
+                    }
+                    else
+                    {
+                        _logger.WriteVerbose("Indexing all existing packages...");
+                    }
+
+                    var existentPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    if (!newOnly && !shouldClean)
+                    {
+                        var indexedPackages = _index.GetPackages();
+                        // remove packages from index that don't exist on disk anymore
+                        foreach (var indexedPackage in indexedPackages)
+                        {
+                            if (File.Exists(indexedPackage.Path))
+                            {
+                                existentPackages.Add(indexedPackage.Path);
+                            }
+                            else
+                            {
+                                _logger.WriteVerbose(string.Format("Package {0} does not exist on disk, removing ...", indexedPackage.Name));
+                                _index.RemovePackage(indexedPackage.Name);
+                            }
+                        }
+                    }
+
+                    var packages = _discoverer.DiscoverPackages(_packageSources, existentPackages, newOnly, _index.LastWriteTime, cancellationToken).ToList();
+                    _logger.WriteVerbose("Found {0} packages to be added to the index.", packages.Count());
+
+                    foreach (var package in packages)
+                    {
+                        if (cancellationToken != null && cancellationToken.IsCancellationRequested)
+                        {
+                            return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed }; ;
+                        }
+
+                        var errors = _index.AddPackage(package, force: false);
+                        success &= (errors == null || !errors.Any());
+                    }
+                }
+                catch(Exception e)
+                {
+                    Debug.Write(e.ToString());
+                    success = false;
                 }
 
                 stopWatch.Stop();

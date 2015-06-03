@@ -190,33 +190,35 @@ namespace Nuget.PackageIndex.Engine
         /// <returns></returns>
         public IList<Document> Search(Query query, int max = 0)
         {
-            IndexSearcher searcher = GetSearcher();
-            if (searcher == null)
+            using (IndexSearcher searcher = GetSearcher())
             {
-                return new List<Document>();
-            }
+                if (searcher == null)
+                {
+                    return new List<Document>();
+                }
 
-            var docIds = new List<int>();
-            if (max > 0)
-            {
-                TopDocs hits = searcher.Search(query, max);
-                docIds.AddRange(hits.ScoreDocs.Select(x => x.Doc));
-            }
-            else
-            {
-                var collector = new AllResultsCollector();
-                searcher.Search(query, collector);
-                docIds.AddRange(collector.Docs);
-            }
+                var docIds = new List<int>();
+                if (max > 0)
+                {
+                    TopDocs hits = searcher.Search(query, max);
+                    docIds.AddRange(hits.ScoreDocs.Select(x => x.Doc));
+                }
+                else
+                {
+                    var collector = new AllResultsCollector();
+                    searcher.Search(query, collector);
+                    docIds.AddRange(collector.Docs);
+                }
 
-            var results = new List<Document>();
-            foreach (var id in docIds)
-            {
-                var document = searcher.Doc(id);
-                results.Add(document);
-            }
+                var results = new List<Document>();
+                foreach (var id in docIds)
+                {
+                    var document = searcher.Doc(id);
+                    results.Add(document);
+                }
 
-            return results;
+                return results;
+            }
         }
 
         #endregion
@@ -231,11 +233,14 @@ namespace Nuget.PackageIndex.Engine
         {
             try
             {
-                return IndexReader.IndexExists(_directory)
-                    ? new IndexSearcher(_directory, true)
-                    : null;
+                if (!IndexReader.IndexExists(_directory))
+                {
+                    return null;
+                }
+
+                return new IndexSearcher(_directory, true);
             }
-            catch(FileNotFoundException)
+            catch
             {
                 return null; // just in case
             }
