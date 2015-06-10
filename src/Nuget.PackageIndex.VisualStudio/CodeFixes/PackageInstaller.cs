@@ -70,7 +70,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                                         foreach (var projectFrameworkMetadata in project.TargetFrameworks)
                                         {
                                             var projectFrameworkName = VersionUtility.ParseFrameworkName(projectFrameworkMetadata.TargetFrameworkShortName);
-                                            if (VersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
+                                            if (projectFrameworkName != null && VersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
                                             {
                                                 frameworksToInstall.Add(projectFrameworkName);
                                             }

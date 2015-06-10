@@ -19,6 +19,9 @@ namespace Nuget.PackageIndex
         IList<PackageIndexError> AddPackage(IPackageMetadata package, bool force);
         IList<PackageIndexError> RemovePackage(string packageName);
         IList<PackageInfo> GetPackages();
+        IList<TypeInfo> GetTypes();
+        IList<NamespaceInfo> GetNamespaces();
+        IList<ExtensionInfo> GetExtensions();
         IList<PackageIndexError> Clean();
     }
 }

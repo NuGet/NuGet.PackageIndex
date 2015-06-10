@@ -9,7 +9,7 @@ namespace Nuget.PackageIndex.Models
     /// <summary>
     /// Extension metadata exposed publicly 
     /// </summary>
-    public class ExtensionInfo : IPackageIndexModelInfo
+    public class ExtensionInfo : ModelBase, IPackageIndexModelInfo
     { 
         public string Name { get; set; }
         public string FullName { get; set; }
@@ -17,12 +17,6 @@ namespace Nuget.PackageIndex.Models
         public string AssemblyName { get; set; }
         public string PackageName { get; set; }
         public string PackageVersion { get; set; }
-        public List<string> TargetFrameworks { get; internal set; }
-
-        public ExtensionInfo()
-        {
-            TargetFrameworks = new List<string>();
-        }
 
         public override string ToString()
         {

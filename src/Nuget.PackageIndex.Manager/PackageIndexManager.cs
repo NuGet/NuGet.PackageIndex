@@ -3,7 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Nuget.PackageIndex.Logging;
 
@@ -123,6 +125,15 @@ namespace Nuget.PackageIndex.Manager
                         _consoleUI.WriteNormalLine(Resources.PackageOrTypeIsMissing);
                     }
                     break;
+                case PackageIndexManagerAction.Dump:
+                    var dumpFile = arguments.DumpFile;
+                    if (string.IsNullOrEmpty(dumpFile))
+                    {
+                        dumpFile = "IndexDump.csv";
+                    }
+
+                    DumpIndex(builder, dumpFile);
+                    break;
                 default:
                     _consoleUI.WriteNormalLine(Resources.ActionUnrecognized);
                     return;
@@ -154,6 +165,40 @@ namespace Nuget.PackageIndex.Manager
 
             _consoleUI.WriteHighlitedLine(string.Format(Resources.TimeElapsed, stopWatch.Elapsed));
             _consoleUI.WriteNormalLine(string.Empty);
+        }
+
+        private void DumpIndex(ILocalPackageIndexBuilder builder, string dumpFile)
+        {
+            if (File.Exists(dumpFile))
+            {
+                File.Delete(dumpFile);
+            }
+
+            StringBuilder stringBuilder = new StringBuilder();
+            var allTypes = builder.Index.GetTypes().OrderBy(x => x.PackageName);
+            stringBuilder.AppendLine("Types,,,,");
+            foreach (var type in allTypes)
+            {
+                stringBuilder.AppendLine(string.Format("{0},{1},{2},{3},{4}", type.PackageName, type.PackageVersion, type.AssemblyName, type.FullName, string.Join(";", type.TargetFrameworks)));
+            }
+
+            var allExtensions = builder.Index.GetExtensions().OrderBy(x => x.PackageName);
+            stringBuilder.AppendLine("Extensions,,,,");
+            foreach (var extension in allExtensions)
+            {
+                stringBuilder.AppendLine(string.Format("{0},{1},{2},{3},{4}", extension.PackageName, extension.PackageVersion, extension.AssemblyName, extension.FullName, string.Join(";", extension.TargetFrameworks)));
+            }
+
+            var allNamespaces = builder.Index.GetNamespaces().OrderBy(x => x.PackageName);
+            stringBuilder.AppendLine("Namespaces,,,,");
+            foreach (var ns in allNamespaces)
+            {
+                stringBuilder.AppendLine(string.Format("{0},{1},{2},{3},{4}", ns.PackageName, ns.PackageVersion, ns.AssemblyName, ns.Name, string.Join(";", ns.TargetFrameworks)));
+            }
+
+            File.WriteAllText(dumpFile, stringBuilder.ToString());
+
+            _consoleUI.WriteNormalLine(string.Format(Resources.DumpMessage, Path.GetFullPath(dumpFile)));
         }
     }
 }

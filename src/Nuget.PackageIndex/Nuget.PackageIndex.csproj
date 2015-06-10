@@ -46,8 +46,8 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CodeAnalysis, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.CodeAnalysis.Common.1.0.0-rc1\lib\net45\Microsoft.CodeAnalysis.dll</HintPath>
-      <Private>True</Private>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\references\Microsoft.CodeAnalysis.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CodeAnalysis.CSharp">
       <HintPath>..\..\references\Microsoft.CodeAnalysis.CSharp.dll</HintPath>
@@ -94,9 +94,11 @@
     <Compile Include="Engine\PackageIndexError.cs" />
     <Compile Include="Engine\PackageSearchEngine.cs" />
     <Compile Include="Models\IPackageIndexModelInfo.cs" />
+    <Compile Include="Models\ModelBase.cs" />
     <Compile Include="NupkgLocalPackageLoader.cs" />
     <Compile Include="IPackageMetadata.cs" />
     <Compile Include="ILocalPackageLoader.cs" />
+    <Compile Include="AssemblyMetadata.cs" />
     <Compile Include="PackageMetadata.cs" />
     <Compile Include="RoslynReflectorFactory.cs" />
     <Compile Include="IReflectorFactory.cs" />

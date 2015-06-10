@@ -8,18 +8,12 @@ namespace Nuget.PackageIndex.Models
     /// <summary>
     /// Namespace metadata exposed publicly 
     /// </summary>
-    public class NamespaceInfo : IPackageIndexModelInfo
+    public class NamespaceInfo : ModelBase, IPackageIndexModelInfo
     { 
         public string Name { get; set; }
         public string AssemblyName { get; set; }
         public string PackageName { get; set; }
         public string PackageVersion { get; set; }
-        public List<string> TargetFrameworks { get; internal set; }
-
-        public NamespaceInfo()
-        {
-            TargetFrameworks = new List<string>();
-        }
 
         public override string ToString()
         {

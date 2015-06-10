@@ -3,10 +3,10 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Nuget.PackageIndex.Logging;
-using System.Collections.Generic;
 using Nuget.PackageIndex.Models;
 using Nuget.PackageIndex.Client.Analyzers;
 
@@ -143,7 +143,8 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             }
 
             return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
-                                                                distinctTargetFrameworks, allowHigherVersions: true);
+                                                              distinctTargetFrameworks, 
+                                                              allowHigherVersions: true);
         }
 
         private IEnumerable<IPackageIndexModelInfo> CollectExtensionSuggestions(SyntaxNode node, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
@@ -163,7 +164,8 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             }
 
             return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
-                                                                distinctTargetFrameworks, allowHigherVersions: true);
+                                                              distinctTargetFrameworks, 
+                                                              allowHigherVersions: true);
         }
 
         private IEnumerable<IPackageIndexModelInfo> CollectTypeSuggestions(SyntaxNode node, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
@@ -183,7 +185,8 @@ namespace Nuget.PackageIndex.Client.CodeFixes
             }
 
             return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
-                                                                distinctTargetFrameworks, allowHigherVersions: true);
+                                                              distinctTargetFrameworks, 
+                                                              allowHigherVersions: true);
         }
 
         #region Abstract methods and properties

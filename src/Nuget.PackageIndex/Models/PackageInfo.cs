@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Nuget.PackageIndex.Models
 {
-    public class PackageInfo
+    public class PackageInfo: ModelBase
     {
         public string Name { get; set; }
         public string Version { get; set; }

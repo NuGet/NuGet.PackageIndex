@@ -24,6 +24,7 @@ namespace Nuget.PackageIndex.Manager
             optionsSet.AddOption("-p|--package=", Resources.PackageDescription, value => arguments.Package = value);
             optionsSet.AddOption("-n|--namespace=", Resources.TypeDescription, value => arguments.Namespace = value);
             optionsSet.AddOption("-e|--extension=", Resources.TypeDescription, value => arguments.Extension = value);
+            optionsSet.AddOption("-df|--dumpfile=", Resources.TypeDescription, value => arguments.DumpFile = value);
             optionsSet.AddOption("-q|--quiet", Resources.QuietDescription, value => arguments.Quiet = (value != null));
             optionsSet.AddOption("-v|--verbose", Resources.VerboseDescription, value => arguments.Verbose = (value != null));
             optionsSet.AddOption("-f|--force", Resources.ForceDescription, value => arguments.Force = (value != null));
@@ -49,6 +50,7 @@ namespace Nuget.PackageIndex.Manager
         public bool Quiet { get; set; }
         public bool Verbose { get; set; }
         public bool ShouldHelp { get; set; }
+        public string DumpFile { get; set; }
 
         public void PrintHelpMessage()
         {

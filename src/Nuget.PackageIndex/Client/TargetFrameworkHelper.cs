@@ -54,10 +54,14 @@ namespace Nuget.PackageIndex.Client
         {
             // if we find at least any framework in package that current project supports,
             // we show this package to user.
-            if (typeInfo.TargetFrameworks == null || !typeInfo.TargetFrameworks.Any())
+            if (typeInfo.TargetFrameworks == null 
+                || !typeInfo.TargetFrameworks.Any()
+                || typeInfo.TargetFrameworks.Any(x => x.Equals("Unsupported", StringComparison.OrdinalIgnoreCase)))
             {
-                // In this case package did not specify any target frameworks and we follow our default 
-                // behavior and display as much as possible to the user
+                // In this case:
+                //      if package did not specify any target frameworks
+                //         or one of the frameworks is new and Nuget.Core can not recognize it - returning Unsupported
+                //      we follow our default behavior and display as much as possible to the user, return true to show the package
                 return true;
             }
             else

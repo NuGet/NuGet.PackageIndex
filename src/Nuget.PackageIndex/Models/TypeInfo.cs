@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Nuget.PackageIndex.Models
@@ -9,19 +11,13 @@ namespace Nuget.PackageIndex.Models
     /// <summary>
     /// Type metadata exposed publicly 
     /// </summary>
-    public class TypeInfo : IPackageIndexModelInfo
+    public class TypeInfo : ModelBase, IPackageIndexModelInfo
     { 
         public string Name { get; set; }
         public string FullName { get; set; }
         public string AssemblyName { get; set; }
         public string PackageName { get; set; }
         public string PackageVersion { get; set; }
-        public List<string> TargetFrameworks { get; internal set; }
-
-        public TypeInfo()
-        {
-            TargetFrameworks = new List<string>();
-        }
 
         public override string ToString()
         {

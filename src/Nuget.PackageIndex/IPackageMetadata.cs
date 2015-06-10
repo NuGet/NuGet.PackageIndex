@@ -13,6 +13,6 @@ namespace Nuget.PackageIndex
         string Version{ get; }
         IEnumerable<string> TargetFrameworks { get; }
         string LocalPath { get; }
-        IEnumerable<string> Assemblies { get; }
+        IEnumerable<AssemblyMetadata> Assemblies { get; set; }
     }
 }

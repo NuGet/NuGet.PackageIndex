@@ -118,7 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ActionDescription" xml:space="preserve">
-    <value>Action to be done with package index: Build, Rebuild, Clean, Add, Remove, Query.</value>
+    <value>Action to be done with package index: Build, Rebuild, Clean, Add, Remove, Query, Dump.</value>
   </data>
   <data name="ActionUnrecognized" xml:space="preserve">
     <value>Requested action is unrecognized.</value>
@@ -128,6 +128,9 @@
   </data>
   <data name="ArgumentIsFlag" xml:space="preserve">
     <value>Argument is a flag and does not support values '{0}'</value>
+  </data>
+  <data name="DumpMessage" xml:space="preserve">
+    <value>Dumped index contents to: {0}</value>
   </data>
   <data name="ForceDescription" xml:space="preserve">
     <value>Force selected action.</value>

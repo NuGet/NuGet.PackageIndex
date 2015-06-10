@@ -10,6 +10,7 @@ namespace Nuget.PackageIndex.Manager
         Clean,
         Add,
         Remove,
-        Query
+        Query,
+        Dump
     }
 }

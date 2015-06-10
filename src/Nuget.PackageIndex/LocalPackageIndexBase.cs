@@ -3,8 +3,8 @@
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
-using Microsoft.CodeAnalysis;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 using NuGet;
 using Lucene.Net.Analysis;
 using Lucene.Net.Search;
@@ -131,11 +131,11 @@ namespace Nuget.PackageIndex
                 Logger.WriteInformation("Adding package {0} {1} to index.", package.Id, package.Version);
 
 
-                var reflector = ReflectorFactory.Create(package.Id, package.Version, package.TargetFrameworks);
-                foreach (var assemblyPath in package.Assemblies)
+                var reflector = ReflectorFactory.Create(package);
+                foreach (var assembly in package.Assemblies)
                 {
-                    Logger.WriteVerbose("Processing assembly {0}.", assemblyPath);
-                    reflector.ProcessAssembly(assemblyPath);
+                    Logger.WriteVerbose("Processing assembly {0}.", assembly.FullPath);
+                    reflector.ProcessAssembly(assembly);
                 }
 
                 Logger.WriteVerbose("Storing package model to the index.");
@@ -198,25 +198,6 @@ namespace Nuget.PackageIndex
             return errors;
         }
 
-        private IList<PackageModel> GetPackagesInternal(string packageName)
-        {
-            int maxResults = 0;
-            Query query = null;
-            if (string.IsNullOrEmpty(packageName))
-            {
-                query = new WildcardQuery(new Term(PackageModel.PackageNameField, "*"));
-            }
-            else
-            {
-                maxResults = MaxTypesExpected;
-                query = new TermQuery(new Term(PackageModel.PackageNameField, packageName));
-            }
-
-            return Engine.Search(query, maxResults)
-                         .Select(x => new PackageModel(x))
-                         .ToList();
-        }
-
         public IList<PackageInfo> GetPackages()
         {
             return GetPackages(null);
@@ -227,22 +208,34 @@ namespace Nuget.PackageIndex
             return GetPackagesInternal(packageName).Select(x => (PackageInfo)x).ToList();
         }
 
+        public IList<TypeInfo> GetTypes()
+        {
+            return GetTypes(null);
+        }
+
         public IList<TypeInfo> GetTypes(string typeName)
         {
-            return Engine.Search(new TermQuery(new Term(TypeModel.TypeNameField, typeName)), MaxTypesExpected)
-                         .Select(x => (TypeInfo)new TypeModel(x)).ToList();
+            return GetTypesInternal(typeName).Select(x => (TypeInfo)x).ToList();
+        }
+
+        public IList<NamespaceInfo> GetNamespaces()
+        {
+            return GetNamespaces(null);
         }
 
         public IList<NamespaceInfo> GetNamespaces(string ns)
         {
-            return Engine.Search(new TermQuery(new Term(NamespaceModel.NamespaceNameField, ns)), MaxTypesExpected)
-                         .Select(x => (NamespaceInfo)new NamespaceModel(x)).ToList();
+            return GetNamespacesInternal(ns).Select(x => (NamespaceInfo)x).ToList();
+        }
+
+        public IList<ExtensionInfo> GetExtensions()
+        {
+            return GetExtensions(null);
         }
 
         public IList<ExtensionInfo> GetExtensions(string extension)
         {
-            return Engine.Search(new TermQuery(new Term(ExtensionModel.ExtensionNameField, extension)), MaxTypesExpected)
-                         .Select(x => (ExtensionInfo)new ExtensionModel(x)).ToList();
+            return GetExtensionsInternal(extension).Select(x => (ExtensionInfo)x).ToList();
         }
 
         public IList<PackageIndexError> Clean()
@@ -268,6 +261,49 @@ namespace Nuget.PackageIndex
         {
             return Engine.Search(new TermQuery(new Term(ExtensionModel.ExtensionPackageNameField, packageName)))
                          .Select(x => new ExtensionModel(x)).ToList();
+        }
+
+        private IList<PackageModel> GetPackagesInternal(string packageName)
+        {
+            return GetModelsInternal(packageName, PackageModel.PackageNameField, (doc) => new PackageModel(doc))
+                    .Select(x => (PackageModel)x).ToList();
+        }
+
+        private IList<TypeModel> GetTypesInternal(string typeName)
+        {
+            return GetModelsInternal(typeName, TypeModel.TypeNameField, (doc) => new TypeModel(doc))
+                    .Select(x => (TypeModel)x).ToList();
+        }
+
+        private IList<NamespaceModel> GetNamespacesInternal(string namespaceName)
+        {
+            return GetModelsInternal(namespaceName, NamespaceModel.NamespaceNameField, (doc) => new NamespaceModel(doc))
+                    .Select(x => (NamespaceModel)x).ToList();
+        }
+
+        private IList<ExtensionModel> GetExtensionsInternal(string extensionName)
+        {
+            return GetModelsInternal(extensionName, ExtensionModel.ExtensionNameField, (doc) => new ExtensionModel(doc))
+                    .Select(x => (ExtensionModel)x).ToList();
+        }
+
+        private IList<IPackageIndexModel> GetModelsInternal(string modelName, string modelNameField, Func<Lucene.Net.Documents.Document, IPackageIndexModel> createModel)
+        {
+            int maxResults = 0;
+            Query query = null;
+            if (string.IsNullOrEmpty(modelName))
+            {
+                query = new WildcardQuery(new Term(modelNameField, "*"));
+            }
+            else
+            {
+                maxResults = MaxTypesExpected;
+                query = new TermQuery(new Term(modelNameField, modelName));
+            }
+
+            return Engine.Search(query, maxResults)
+                         .Select(x => createModel(x))
+                         .ToList();
         }
     }
 }

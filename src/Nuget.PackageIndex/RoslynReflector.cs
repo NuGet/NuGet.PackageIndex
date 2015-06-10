@@ -42,29 +42,25 @@ namespace Nuget.PackageIndex
             }
         }
 
-        private string _packageId;
-        private string _packageVersion;
-        private IEnumerable<string> _packageTargetFrameworks;
+        private readonly IPackageMetadata _package;
 
-        public RoslynReflector(string packageId, string packageVersion, IEnumerable<string> packageTargetFrameworks)
+        public RoslynReflector(IPackageMetadata package)
         {
             _types = new Dictionary<string, TypeModel>();
             _namespaces = new Dictionary<string, NamespaceModel>();
             _extensions = new Dictionary<string, ExtensionModel>();
-            _packageId = packageId;
-            _packageVersion = packageVersion;
-            _packageTargetFrameworks = packageTargetFrameworks;
+            _package = package;
         }
 
         /// <summary>
         /// Extracts types, extensions and namespaces data from given assembly and adds it to global
         /// collections to make sure we have unique data accross all assemblies in a package.
         /// </summary>
-        public void ProcessAssembly(string assemblyPath)
+        public void ProcessAssembly(AssemblyMetadata assembly)
         {
             try
             {
-                var metadata = MetadataReference.CreateFromFile(assemblyPath);
+                var metadata = MetadataReference.CreateFromFile(assembly.FullPath);
 
                 // create an empty CSharp compillation and add a single reference to given assembly.
                 // Note: Even though we do use CSharp compillation here, we only se it to retrieve 
@@ -72,7 +68,7 @@ namespace Nuget.PackageIndex
                 var compilation = CSharpCompilation.Create("dummy.dll", references: new[] { metadata });
                 var assemblySymbol = (IAssemblySymbol)compilation.GetAssemblyOrModuleSymbol(metadata);
 
-                ProcessNamespace(Path.GetFileName(assemblyPath), assemblySymbol.GlobalNamespace);
+                ProcessNamespace(assembly, assemblySymbol.GlobalNamespace);
             }
             catch(Exception e)
             {
@@ -83,8 +79,9 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Reqursively goes through all namespaces in the assembly and discovers unique types, extensions and namespaces.
         /// </summary>
-        private void ProcessNamespace(string assemblyName, INamespaceSymbol namespaceSymbol)
+        private void ProcessNamespace(AssemblyMetadata assembly, INamespaceSymbol namespaceSymbol)
         {
+            var assemblyName = Path.GetFileName(assembly.FullPath);
             if (string.IsNullOrEmpty(assemblyName) || namespaceSymbol == null)
             {
                 return;
@@ -116,10 +113,10 @@ namespace Nuget.PackageIndex
                             Name = typeName.Name,
                             FullName = typeFullName,
                             AssemblyName = assemblyName,
-                            PackageName = _packageId,
-                            PackageVersion = _packageVersion
+                            PackageName = _package.Id,
+                            PackageVersion = _package.Version
                         };
-                        newType.TargetFrameworks.AddRange(_packageTargetFrameworks);
+                        newType.TargetFrameworks.AddRange(assembly.TargetFrameworks);
 
                         _types.Add(typeFullName, newType);
 
@@ -130,13 +127,23 @@ namespace Nuget.PackageIndex
                             {
                                 Name = fullNamespaceName,
                                 AssemblyName = assemblyName,
-                                PackageName = _packageId,
-                                PackageVersion = _packageVersion
+                                PackageName = _package.Id,
+                                PackageVersion = _package.Version
                             };
-                            newNamespace.TargetFrameworks.AddRange(_packageTargetFrameworks);
+                            newNamespace.TargetFrameworks.AddRange(assembly.TargetFrameworks);
 
                             _namespaces.Add(fullNamespaceName, newNamespace);
                         }
+                        else
+                        {
+                            var namespaceModel = _namespaces[fullNamespaceName];
+                            namespaceModel.MergeTargetFrameworks(assembly.TargetFrameworks);
+                        }
+                    }
+                    else
+                    {
+                        var typeModel = _types[typeFullName];
+                        typeModel.MergeTargetFrameworks(assembly.TargetFrameworks);
                     }
 
                     // if type is static, then it might contain extension methdos 
@@ -165,13 +172,18 @@ namespace Nuget.PackageIndex
                                         Name = method.Name,
                                         FullName = extensionFullName,
                                         AssemblyName = assemblyName,
-                                        PackageName = _packageId,
-                                        PackageVersion = _packageVersion,
+                                        PackageName = _package.Id,
+                                        PackageVersion = _package.Version,
                                         Namespace = fullNamespaceName
                                     };
-                                    newExtension.TargetFrameworks.AddRange(_packageTargetFrameworks);
+                                    newExtension.TargetFrameworks.AddRange(assembly.TargetFrameworks);
 
                                     _extensions.Add(extensionFullName, newExtension);
+                                }
+                                else
+                                {
+                                    var extensionModel = _extensions[extensionFullName];
+                                    extensionModel.MergeTargetFrameworks(assembly.TargetFrameworks);
                                 }
                             }
                         }
@@ -188,7 +200,7 @@ namespace Nuget.PackageIndex
             {
                 if (childNamespace.NamespaceKind == NamespaceKind.Module)
                 {
-                    ProcessNamespace(assemblyName, childNamespace);
+                    ProcessNamespace(assembly, childNamespace);
                 }
             }
         }
