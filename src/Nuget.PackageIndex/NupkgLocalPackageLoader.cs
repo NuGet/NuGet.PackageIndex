@@ -62,7 +62,7 @@ namespace Nuget.PackageIndex
                 {
                     var package = new ZipPackage(fs);
                     var packageFolder = Path.GetDirectoryName(nupkgFilePath) ?? "";
-                    var allAssemblies = package.GetFiles().Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase));
+                    var allAssemblies = package.GetFiles().Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase)); 
 
                     // There is a new Nuget package format comming and we need to have slightly different logic 
                     // for package discovery depending on the nuget package format version:
