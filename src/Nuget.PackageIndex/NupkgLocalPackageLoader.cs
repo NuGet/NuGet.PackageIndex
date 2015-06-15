@@ -61,8 +61,8 @@ namespace Nuget.PackageIndex
         /// ====== ======================================== ======
         /// +      lib\assembly.dll                         any
         /// +      lib\fx\asembly.dll                       fx
-        /// -      lib\tools\assembly.dll                   -
-        /// -      lib\content\assembly.dll                 -
+        /// -      tools\assembly.dll                       -
+        /// -      content\assembly.dll                     -
         /// +      lib\contract\assembly.dll                any
         /// +      ref\any\assembly.dll                     any
         /// +      ref\fx\asembly.dll                       fx
@@ -92,11 +92,11 @@ namespace Nuget.PackageIndex
                     var packageFolder = Path.GetDirectoryName(nupkgFilePath) ?? string.Empty;
                     var allAssemblies = _nugetHelper.GetPackageFiles()
                                                     .Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase)
-                                                                && !x.Path.ToLower().Contains(@"tools\")
-                                                                && !x.Path.ToLower().Contains(@"content\"));
+                                                                && !x.Path.StartsWith(@"tools\", StringComparison.OrdinalIgnoreCase)
+                                                                && !x.Path.StartsWith(@"content\", StringComparison.OrdinalIgnoreCase));
 
                     var hasContractAssemblies = false;
-                    var refAssemblies = allAssemblies.Where(x => x.Path.StartsWith("ref", StringComparison.OrdinalIgnoreCase));
+                    var refAssemblies = allAssemblies.Where(x => x.Path.StartsWith(@"ref\", StringComparison.OrdinalIgnoreCase));
                     if (refAssemblies.Any())
                     {
                         // if it is a new format, take only ref assembies  
@@ -105,7 +105,7 @@ namespace Nuget.PackageIndex
                     else
                     {
                         // if it is old format and it has a "contract" subfolder, take only assemblies under contract
-                        var contractAssemblies = allAssemblies.Where(x => x.Path.ToLower().Contains("contract"));
+                        var contractAssemblies = allAssemblies.Where(x => x.Path.StartsWith(@"lib\contract\", StringComparison.OrdinalIgnoreCase));
                         if (contractAssemblies.Any())
                         {
                             allAssemblies = contractAssemblies;

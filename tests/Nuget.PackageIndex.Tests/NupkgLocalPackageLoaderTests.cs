@@ -475,11 +475,11 @@ namespace Nuget.PackageIndex.Tests
             {
                 var mockPackageFileTools = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFileTools.Setup(x => x.EffectivePath).Returns("myToolsSample.dLl");
-                mockPackageFileTools.Setup(x => x.Path).Returns(@"lib\tOols\myToolsSample.dLl");
+                mockPackageFileTools.Setup(x => x.Path).Returns(@"tOols\myToolsSample.dLl");
 
                 var mockPackageFileContent = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFileContent.Setup(x => x.EffectivePath).Returns("myToolsSample.dLl");
-                mockPackageFileContent.Setup(x => x.Path).Returns(@"lib\contenT\myToolsSample.dLl");
+                mockPackageFileContent.Setup(x => x.Path).Returns(@"contenT\myToolsSample.dLl");
 
                 PackageFiles.Add(mockPackageFileTools);
                 PackageFiles.Add(mockPackageFileContent);
