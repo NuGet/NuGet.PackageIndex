@@ -10,11 +10,11 @@ using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
 using Nuget.PackageIndex.Client.CodeFixes;
-using NuGet;
 using Nuget.PackageIndex.Client;
 using Nuget.PackageIndex.Models;
 using Document = Microsoft.CodeAnalysis.Document;
 using Task = System.Threading.Tasks.Task;
+using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes
 {
@@ -65,12 +65,12 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                                     delegate 
                                     {
                                         var frameworksToInstall = new List<FrameworkName>();
-                                        var packageFrameworkNames = packageInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x))
+                                        var packageFrameworkNames = packageInfo.TargetFrameworks.Select(x => DnxVersionUtility.ParseFrameworkName(x))
                                                                                                 .ToList();
                                         foreach (var projectFrameworkMetadata in project.TargetFrameworks)
                                         {
-                                            var projectFrameworkName = VersionUtility.ParseFrameworkName(projectFrameworkMetadata.TargetFrameworkShortName);
-                                            if (projectFrameworkName != null && VersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
+                                            var projectFrameworkName = DnxVersionUtility.ParseFrameworkName(projectFrameworkMetadata.TargetFrameworkShortName);
+                                            if (projectFrameworkName != null && DnxVersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
                                             {
                                                 frameworksToInstall.Add(projectFrameworkName);
                                             }

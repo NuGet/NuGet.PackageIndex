@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NuGet;
 using Nuget.PackageIndex.Models;
+using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex.Client
 {
@@ -20,7 +21,7 @@ namespace Nuget.PackageIndex.Client
         /// packages for discoverability purpose (this whole feature is about discoverability). In this case
         /// we let user to figure out what he wants to do with unsupported packages, we at least show them.
         /// </summary>
-        public static IEnumerable<IPackageIndexModelInfo> GetSupportedPackages(IEnumerable<IPackageIndexModelInfo> packagesWithGivenType, 
+        public static IEnumerable<IPackageIndexModelInfo> GetSupportedPackages(IEnumerable<IPackageIndexModelInfo> modelsWithGivenType, 
                                                                  IEnumerable<TargetFrameworkMetadata> projectTargetFrameworks,
                                                                  bool allowHigherVersions)
         {
@@ -29,19 +30,19 @@ namespace Nuget.PackageIndex.Client
             {
                 // if project target frameworks are provided, try to filter
                 supportedPackages = new List<IPackageIndexModelInfo>();
-                foreach (var packageInfo in packagesWithGivenType)
+                foreach (var model in modelsWithGivenType)
                 {
-                    if (SupportsProjectTargetFrameworks(packageInfo, projectTargetFrameworks)
-                        && !PackageExistsInTheProject(packageInfo, projectTargetFrameworks, allowHigherVersions))
+                    if (SupportsProjectTargetFrameworks(model, projectTargetFrameworks)
+                        && !PackageExistsInTheProject(model, projectTargetFrameworks, allowHigherVersions))
                     {
-                        supportedPackages.Add(packageInfo);
+                        supportedPackages.Add(model);
                     }
                 }
             }
             else
             {
                 // if project did not provide target frameworks to us, show all packages with requested type
-                supportedPackages = new List<IPackageIndexModelInfo>(packagesWithGivenType);
+                supportedPackages = new List<IPackageIndexModelInfo>(modelsWithGivenType);
             }
 
             return supportedPackages;
@@ -66,11 +67,11 @@ namespace Nuget.PackageIndex.Client
             }
             else
             {
-                var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => VersionUtility.ParseFrameworkName(x)).ToList();
+                var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => DnxVersionUtility.ParseFrameworkName(x)).ToList();
                 foreach (var projectFramework in projectTargetFrameworks)
                 {
-                    var projectFrameworkName = VersionUtility.ParseFrameworkName(projectFramework.TargetFrameworkShortName);
-                    if (VersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
+                    var projectFrameworkName = DnxVersionUtility.ParseFrameworkName(projectFramework.TargetFrameworkShortName);
+                    if (DnxVersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
                     {
                         // if at least any project target framework supports package - display it
                         return true;

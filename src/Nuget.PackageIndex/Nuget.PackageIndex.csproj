@@ -79,6 +79,19 @@
     <Compile Include="Abstractions\NugetHelper.cs" />
     <Compile Include="Abstractions\INugetHelper.cs" />
     <Compile Include="Abstractions\IFileSystem.cs" />
+    <Compile Include="NugetHelpers\TfmPackageAssemblyMatcher.cs" />
+    <Compile Include="NugetHelpers\Asset.cs" />
+    <Compile Include="NugetHelpers\PatternExpression.cs" />
+    <Compile Include="NugetHelpers\ContentItem.cs" />
+    <Compile Include="NugetHelpers\ContentItemGroup.cs" />
+    <Compile Include="NugetHelpers\ContentItemCollection.cs" />
+    <Compile Include="NugetHelpers\ContentPropertyDefinition.cs" />
+    <Compile Include="NugetHelpers\ContentPatternDefinition.cs" />
+    <Compile Include="NugetHelpers\PropertyDefinitions.cs" />
+    <Compile Include="NugetHelpers\SelectionCriteria.cs" />
+    <Compile Include="NugetHelpers\SelectionCriteriaBuilder.cs" />
+    <Compile Include="NugetHelpers\PatternDefinitions.cs" />
+    <Compile Include="NugetHelpers\DnxVersionUtility.cs" />
     <Compile Include="Client\Analyzers\AddPackageDiagnosticAnalyzer.cs" />
     <Compile Include="Client\StringExtensions.cs" />
     <Compile Include="Client\ISyntaxHelper.cs" />
@@ -99,6 +112,7 @@
     <Compile Include="Engine\PackageSearchEngine.cs" />
     <Compile Include="Models\IPackageIndexModelInfo.cs" />
     <Compile Include="Models\ModelBase.cs" />
+    <Compile Include="NugetHelpers\FrameworkNameEqualityComparer.cs" />
     <Compile Include="NupkgLocalPackageLoader.cs" />
     <Compile Include="IPackageMetadata.cs" />
     <Compile Include="ILocalPackageLoader.cs" />

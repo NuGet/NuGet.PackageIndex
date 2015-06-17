@@ -6,7 +6,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using NuGet;
+using System.Runtime.Versioning;
+using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex
 {
@@ -33,10 +34,10 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Discovers packages from nupkg files under given source paths
         /// </summary>
-        public IEnumerable<IPackageMetadata> DiscoverPackages(IEnumerable<string> sourcePaths, 
-                                                              HashSet<string> indexedPackages, 
-                                                              bool newOnly, 
-                                                              DateTime lastIndexModifiedTime, 
+        public IEnumerable<IPackageMetadata> DiscoverPackages(IEnumerable<string> sourcePaths,
+                                                              HashSet<string> indexedPackages,
+                                                              bool newOnly,
+                                                              DateTime lastIndexModifiedTime,
                                                               CancellationToken cancellationToken)
         {
             var result = new List<IPackageMetadata>();
@@ -54,22 +55,7 @@ namespace Nuget.PackageIndex
         }
 
         /// <summary>
-        /// Returns metadata info for given nupkg file. The logic for picking right
-        /// reference asemblies is:
-        /// 
-        /// Action Path                                     Target
-        /// ====== ======================================== ======
-        /// +      lib\assembly.dll                         any
-        /// +      lib\fx\asembly.dll                       fx
-        /// -      tools\assembly.dll                       -
-        /// -      content\assembly.dll                     -
-        /// +      lib\contract\assembly.dll                any
-        /// +      ref\any\assembly.dll                     any
-        /// +      ref\fx\asembly.dll                       fx
-        /// 
-        /// If ref folder exists - take it,
-        /// otherwise if contract folder exist - take it,
-        /// otherwise process assemlies under lib.
+        /// Returns metadata info for given nupkg file. 
         /// </summary>
         public IPackageMetadata GetPackageMetadataFromPath(string nupkgFilePath)
         {
@@ -87,92 +73,71 @@ namespace Nuget.PackageIndex
             {
                 using (var fs = _fileSystem.FileOpenRead(nupkgFilePath))
                 {
-                    _nugetHelper.OpenPackage(fs);
+                    var package = _nugetHelper.OpenPackage(fs);
 
                     var packageFolder = Path.GetDirectoryName(nupkgFilePath) ?? string.Empty;
-                    var allAssemblies = _nugetHelper.GetPackageFiles()
-                                                    .Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase)
-                                                                && !x.Path.StartsWith(@"tools\", StringComparison.OrdinalIgnoreCase)
-                                                                && !x.Path.StartsWith(@"content\", StringComparison.OrdinalIgnoreCase));
+                    var allAssemblies = package.GetFiles()
+                                               .Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase))
+                                               .Select(x => x.Path);
 
-                    var hasContractAssemblies = false;
-                    var refAssemblies = allAssemblies.Where(x => x.Path.StartsWith(@"ref\", StringComparison.OrdinalIgnoreCase));
-                    if (refAssemblies.Any())
+                    var packageTargetFrameworkNames = package.GetSupportedFrameworks() ?? new List<FrameworkName>();
+                    var tfmAssemblyGroups = new Dictionary<FrameworkName, IEnumerable<string>>();
+                    // here we construct a list of the form { TFM }, { list of target assemblies } 
+                    foreach (var tfm in packageTargetFrameworkNames)
                     {
-                        // if it is a new format, take only ref assembies  
-                        allAssemblies = refAssemblies;
-                    }
-                    else
-                    {
-                        // if it is old format and it has a "contract" subfolder, take only assemblies under contract
-                        var contractAssemblies = allAssemblies.Where(x => x.Path.StartsWith(@"lib\contract\", StringComparison.OrdinalIgnoreCase));
-                        if (contractAssemblies.Any())
+                        var dnxResult = TfmPackageAssemblyMatcher.GetAssembliesForFramework(tfm, package, allAssemblies);
+                        if (dnxResult != null)
                         {
-                            allAssemblies = contractAssemblies;
-                            hasContractAssemblies = true;
+                            tfmAssemblyGroups.Add(tfm, dnxResult);
                         }
                     }
 
-                    // otherwise it is an old format without contract folder, i.e. having only
-                    // fx folders under lib or assemblies directly under lib root
-                    var packageTargetFrameworks = _nugetHelper.GetPackageSupportedFrameworks()
-                                                              .Select(x => VersionUtility.GetShortFrameworkName(x));
-                    var assembliesMetadata = new List<AssemblyMetadata>();
-                    foreach (var assembly in allAssemblies)
+                    // now we need to convert it to the list of the form: { assembly }, { list of TFM }
+                    var assembliesMetadata = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+                    foreach(var kvp in tfmAssemblyGroups)
                     {
-                        // packages under %programFiles%\WebTools\DNU and .dnx are located in the same folder as nupkg file
-                        var assemblyFullPath = Path.Combine(packageFolder, assembly.Path);
-                        if (!_fileSystem.FileExists(assemblyFullPath))
+                        foreach (var assemblyPath in kvp.Value)
                         {
-                            // packages under %ProgramFiles%\WebTools\packages are located in PackaeName subfolder
-                            assemblyFullPath = Path.Combine(packageFolder, 
-                                                            Path.GetFileNameWithoutExtension(nupkgFilePath), assembly.Path);
+                            List<string> existingAssemblyTfms = null;
+                            if (assembliesMetadata.TryGetValue(assemblyPath, out existingAssemblyTfms))
+                            {
+                                existingAssemblyTfms.Add(DnxVersionUtility.GetShortFrameworkName(kvp.Key));
+                            }
+                            else
+                            {
+                                assembliesMetadata.Add(assemblyPath, new List<string> { DnxVersionUtility.GetShortFrameworkName(kvp.Key) });
+                            }
+                        }
+                    }
 
-                            if (!_fileSystem.FileExists(assemblyFullPath))
+                    var selectedAssemblies = new List<AssemblyMetadata>();
+                    foreach (var am in assembliesMetadata)
+                    {
+                        var fullPath = Path.Combine(packageFolder, am.Key);
+
+                        if (!_fileSystem.FileExists(fullPath))
+                        {
+                            fullPath = Path.Combine(packageFolder, package.Id, am.Key);
+                            if (!_fileSystem.FileExists(fullPath))
                             {
                                 continue;
                             }
                         }
 
-                        IEnumerable<string> assemblyTargetFrameworks = assembly.SupportedFrameworks
-                                                                               .Select(x => VersionUtility.GetShortFrameworkName(x));
-                        // determine assembly framework folder name (it could be also lib or any)
-                        var potentialFrameworkShortName = Path.GetFileName(Path.GetDirectoryName(assembly.Path) ?? string.Empty);
-                        var isUnderLibRoot = "lib".Equals(potentialFrameworkShortName, StringComparison.OrdinalIgnoreCase);
-                        if (isUnderLibRoot 
-                            || potentialFrameworkShortName.Equals("any", StringComparison.OrdinalIgnoreCase)
-                            || hasContractAssemblies)
+                        selectedAssemblies.Add(new AssemblyMetadata
                         {
-                            // if it is directly under lib root or under ref\any or under lib\contract,
-                            // then it target frameworks should be all frameworks supported by package
-                            assemblyTargetFrameworks = packageTargetFrameworks;
-                        }
-                        else
-                        {
-                            // otherwise, if supported frameworks did not return anything explicitly,
-                            // then use fx folder name as assembly target framework short name
-                            if (!assemblyTargetFrameworks.Any())
-                            {
-                                assemblyTargetFrameworks = new[] { potentialFrameworkShortName };
-                            }
-                        }
-
-                        assembliesMetadata.Add(
-                            new AssemblyMetadata
-                            {
-                                FullPath = assemblyFullPath,
-                                TargetFrameworks = assemblyTargetFrameworks
-                            }
-                        );
+                            FullPath = fullPath,
+                            TargetFrameworks = am.Value
+                        });
                     }
 
                     var newPackageMetadata = new PackageMetadata
                     {
-                        Id = _nugetHelper.GetPackageId(),
-                        Version = _nugetHelper.GetPackageVersion(),
+                        Id = package.Id,
+                        Version = package.Version.ToString(),
                         LocalPath = nupkgFilePath,
-                        TargetFrameworks = packageTargetFrameworks,
-                        Assemblies = assembliesMetadata
+                        TargetFrameworks = packageTargetFrameworkNames.Select(x => DnxVersionUtility.GetShortFrameworkName(x)),
+                        Assemblies = selectedAssemblies
                     };
 
                     return newPackageMetadata;
@@ -189,10 +154,10 @@ namespace Nuget.PackageIndex
         /// <summary>
         /// Getting packages from given local folders that contain nupkg files.
         /// </summary>
-        internal IEnumerable<string> GetPackages(IEnumerable<string> sourcePaths, 
-                                                HashSet<string> indexedPackages, 
+        internal IEnumerable<string> GetPackages(IEnumerable<string> sourcePaths,
+                                                HashSet<string> indexedPackages,
                                                 bool newOnly,
-                                                DateTime lastIndexModifiedTime, 
+                                                DateTime lastIndexModifiedTime,
                                                 CancellationToken cancellationToken)
         {
             Debug.Assert(sourcePaths != null);

@@ -3,10 +3,10 @@
 using System.Linq;
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
-using NuGet;
 using Nuget.PackageIndex.Logging;
 using Nuget.PackageIndex.Models;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex.Client.Analyzers
 {
@@ -212,7 +212,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
 
         private string GetFrameworkFriendlyName(string frameworkName)
         {
-            var normalizedFrameworkName = VersionUtility.NormalizeFrameworkName(VersionUtility.ParseFrameworkName(frameworkName));
+            var normalizedFrameworkName = DnxVersionUtility.NormalizeFrameworkName(DnxVersionUtility.ParseFrameworkName(frameworkName));
             string result = normalizedFrameworkName.Identifier;
             if (normalizedFrameworkName.Version != null 
                 && (normalizedFrameworkName.Version.Major != 0 || normalizedFrameworkName.Version.Minor != 0))

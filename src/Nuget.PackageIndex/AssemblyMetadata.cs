@@ -11,6 +11,6 @@ namespace Nuget.PackageIndex
             TargetFrameworks = new List<string>();
         }
         public string FullPath { get; set; }
-        public IEnumerable<string> TargetFrameworks { get; set; }
+        public List<string> TargetFrameworks { get; set; }
     }
 }

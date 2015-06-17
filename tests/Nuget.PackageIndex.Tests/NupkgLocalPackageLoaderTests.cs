@@ -11,6 +11,7 @@ using Nuget.PackageIndex.Abstractions;
 using NuGet;
 using Moq;
 using IFileSystem = Nuget.PackageIndex.Abstractions.IFileSystem;
+using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex.Tests
 {
@@ -27,11 +28,11 @@ namespace Nuget.PackageIndex.Tests
 
             // Act           
             var loader = new NupkgLocalPackageLoader(mockFileSystem.Object, null);
-            var returnedPackages = loader.GetPackages(sourceDirectories, 
-                                                      indexedPackages, 
-                                                      newOnly:false, 
-                                                      lastIndexModifiedTime:DateTime.Now,
-                                                      cancellationToken:CancellationToken.None);
+            var returnedPackages = loader.GetPackages(sourceDirectories,
+                                                      indexedPackages,
+                                                      newOnly: false,
+                                                      lastIndexModifiedTime: DateTime.Now,
+                                                      cancellationToken: CancellationToken.None);
             // Assert
             Assert.IsFalse(returnedPackages.Any());
             mockFileSystem.VerifyAll();
@@ -41,7 +42,7 @@ namespace Nuget.PackageIndex.Tests
                 @"d:\somefolder\SomeSubFolder",
                 @"c:\Program Files\SomeSubFolder"
             };
-            foreach(var dir in sourceDirectories)
+            foreach (var dir in sourceDirectories)
             {
                 mockFileSystem.Setup(x => x.DirectoryExists(dir)).Returns(false);
             }
@@ -184,7 +185,7 @@ namespace Nuget.PackageIndex.Tests
                            .MockOpenExistingPackage()
                            .MockPackageInfo()
                            .MockLibDllUnderRelativeFolderAsNupkg();
-            
+
             PackageMetadata expectedPackageMetadata = mock.GetExpectedPackageMetadata();
 
             // Act
@@ -242,7 +243,6 @@ namespace Nuget.PackageIndex.Tests
             // Arrange 
             var mock = new MockGenerator()
                            .MockOpenExistingPackage()
-                           .MockPackageInfo()
                            .MockToolsAndContentDlls();
 
             PackageMetadata expectedPackageMetadata = mock.GetExpectedPackageMetadata();
@@ -277,6 +277,46 @@ namespace Nuget.PackageIndex.Tests
         }
 
         [TestMethod]
+        public void NupkgLocalPackageLoader_GetPackageMetadataFromPath_LibContract()
+        {
+            // Arrange 
+            var mock = new MockGenerator()
+                           .MockOpenExistingPackage()
+                           .MockPackageInfo()
+                           .MockLibContractDll();
+
+            PackageMetadata expectedPackageMetadata = mock.GetExpectedPackageMetadata();
+
+            // Act
+            var loader = new NupkgLocalPackageLoader(mock.FileSystem.Object, mock.NugetHelper.Object);
+            var returnedPackageMetadata = loader.GetPackageMetadataFromPath(mock.NupkgFile);
+
+            // Assert
+            Assert.IsTrue(expectedPackageMetadata.Equals(returnedPackageMetadata));
+            mock.VerifyAll();
+        }
+
+        [TestMethod]
+        public void NupkgLocalPackageLoader_GetPackageMetadataFromPath_LibExplicitReferences()
+        {
+            // Arrange 
+            var mock = new MockGenerator()
+                           .MockOpenExistingPackage()
+                           .MockPackageInfo()
+                           .MockLibExplicitReferencesDll();
+
+            PackageMetadata expectedPackageMetadata = mock.GetExpectedPackageMetadata();
+
+            // Act
+            var loader = new NupkgLocalPackageLoader(mock.FileSystem.Object, mock.NugetHelper.Object);
+            var returnedPackageMetadata = loader.GetPackageMetadataFromPath(mock.NupkgFile);
+
+            // Assert
+            Assert.IsTrue(expectedPackageMetadata.Equals(returnedPackageMetadata));
+            mock.VerifyAll();
+        }
+
+        [TestMethod]
         public void NupkgLocalPackageLoader_DiscoverPackages_ValidPackage()
         {
             // Arrange 
@@ -290,7 +330,7 @@ namespace Nuget.PackageIndex.Tests
 
             // Act
             var loader = new NupkgLocalPackageLoader(mock.FileSystem.Object, mock.NugetHelper.Object);
-            var returnedPackageMetadata = loader.DiscoverPackages(new [] { mock.SourceDirectory },
+            var returnedPackageMetadata = loader.DiscoverPackages(new[] { mock.SourceDirectory },
                                                                  new HashSet<string>(),
                                                                  newOnly: false,
                                                                  lastIndexModifiedTime: DateTime.Now,
@@ -325,6 +365,7 @@ namespace Nuget.PackageIndex.Tests
         private class MockGenerator
         {
             public Mock<IFileSystem> FileSystem { get; private set; }
+            private Mock<IPackage> NugetPackage { get; set; }
             public Mock<INugetHelper> NugetHelper { get; private set; }
             private List<Mock<IPackageFile>> PackageFiles { get; set; }
             private List<AssemblyMetadata> PackageAssemblyMetadata { get; set; }
@@ -333,6 +374,7 @@ namespace Nuget.PackageIndex.Tests
             {
                 FileSystem = new Mock<IFileSystem>(MockBehavior.Strict);
                 NugetHelper = new Mock<INugetHelper>(MockBehavior.Strict);
+                NugetPackage = new Mock<IPackage>(MockBehavior.Strict);
                 PackageFiles = new List<Mock<IPackageFile>>();
                 PackageAssemblyMetadata = new List<AssemblyMetadata>();
             }
@@ -349,12 +391,17 @@ namespace Nuget.PackageIndex.Tests
                     NugetHelper.VerifyAll();
                 }
 
-                foreach(var packageFile in PackageFiles)
+                if (NugetPackage != null)
+                {
+                    NugetPackage.VerifyAll();
+                }
+
+                foreach (var packageFile in PackageFiles)
                 {
                     packageFile.VerifyAll();
                 }
             }
-            
+
             public string NupkgFile = @"d:\myfolder\sampleBar.nupkg";
             public List<FrameworkName> PackageFrameworks = new List<FrameworkName> {
                     VersionUtility.ParseFrameworkName("net45"),
@@ -368,7 +415,7 @@ namespace Nuget.PackageIndex.Tests
                 FileSystem.Setup(x => x.FileExists(NupkgFile)).Returns(true);
                 FileSystem.Setup(x => x.FileOpenRead(NupkgFile)).Returns(stream);
 
-                NugetHelper.Setup(x => x.OpenPackage(It.IsAny<Stream>()));
+                NugetHelper.Setup(x => x.OpenPackage(It.IsAny<Stream>())).Returns(NugetPackage.Object);
 
                 return this;
             }
@@ -378,9 +425,6 @@ namespace Nuget.PackageIndex.Tests
                 var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFile.Setup(x => x.EffectivePath).Returns("mySample.dLl");
                 mockPackageFile.Setup(x => x.Path).Returns(@"lib\net45\mySample.dLl");
-                mockPackageFile.Setup(x => x.SupportedFrameworks).Returns(new List<FrameworkName>() {                     
-                            VersionUtility.ParseFrameworkName("net45")
-                        });
 
                 PackageFiles.Add(mockPackageFile);
 
@@ -394,7 +438,7 @@ namespace Nuget.PackageIndex.Tests
                 var assemblyMetadata = new AssemblyMetadata
                 {
                     FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile), @"lib\net45\mySample.dLl"),
-                    TargetFrameworks = new[] { "net45" }
+                    TargetFrameworks = new List<string> { "net45", "dnx451" }
                 };
 
                 PackageAssemblyMetadata.Add(assemblyMetadata);
@@ -407,13 +451,10 @@ namespace Nuget.PackageIndex.Tests
                 var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFile.Setup(x => x.EffectivePath).Returns("myRelSample.dLl");
                 mockPackageFile.Setup(x => x.Path).Returns(@"lib\net45\myRelSample.dLl");
-                mockPackageFile.Setup(x => x.SupportedFrameworks).Returns(new List<FrameworkName>() {                     
-                            VersionUtility.ParseFrameworkName("net45")
-                        });
 
                 PackageFiles.Add(mockPackageFile);
 
-                FileSystem.Setup(x => x.FileExists(Path.Combine(Path.GetDirectoryName(NupkgFile), 
+                FileSystem.Setup(x => x.FileExists(Path.Combine(Path.GetDirectoryName(NupkgFile),
                                                                 @"lib\net45\myRelSample.dLl"))).Returns(false);
                 FileSystem.Setup(x => x.FileExists(Path.Combine(Path.GetDirectoryName(NupkgFile),
                                                                 Path.GetFileNameWithoutExtension(NupkgFile),
@@ -426,10 +467,10 @@ namespace Nuget.PackageIndex.Tests
 
                 var assemblyMetadata = new AssemblyMetadata
                 {
-                    FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile), 
-                                            Path.GetFileNameWithoutExtension(NupkgFile), 
+                    FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
+                                            Path.GetFileNameWithoutExtension(NupkgFile),
                                             @"lib\net45\myRelSample.dLl"),
-                    TargetFrameworks = new[] { "net45" }
+                    TargetFrameworks = new List<string> { "net45", "dnx451" }
                 };
 
                 PackageAssemblyMetadata.Add(assemblyMetadata);
@@ -442,7 +483,6 @@ namespace Nuget.PackageIndex.Tests
                 var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFile.Setup(x => x.EffectivePath).Returns("myAnySample.dLl");
                 mockPackageFile.Setup(x => x.Path).Returns(@"ref\ANy\myAnySample.dLl");
-                mockPackageFile.Setup(x => x.SupportedFrameworks).Returns(new List<FrameworkName>());
 
                 var mockPackageFileLib = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFileLib.Setup(x => x.EffectivePath).Returns("myLibNoop.dLl");
@@ -463,7 +503,7 @@ namespace Nuget.PackageIndex.Tests
                 {
                     FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
                                             @"ref\ANy\myAnySample.dLl"),
-                    TargetFrameworks = PackageFrameworks.Select(x => VersionUtility.GetShortFrameworkName(x))
+                    TargetFrameworks = new List<string> { "net45", "dnx451" }
                 };
 
                 PackageAssemblyMetadata.Add(assemblyMetadata);
@@ -473,6 +513,12 @@ namespace Nuget.PackageIndex.Tests
 
             public MockGenerator MockToolsAndContentDlls()
             {
+                var packageId = Path.GetFileNameWithoutExtension(NupkgFile);
+                NugetPackage.Setup(x => x.GetFiles()).Returns(PackageFiles.Select(x => x.Object));
+                NugetPackage.Setup(x => x.GetSupportedFrameworks()).Returns(PackageFrameworks);
+                NugetPackage.Setup(x => x.Id).Returns(packageId);
+                NugetPackage.Setup(x => x.Version).Returns(new SemanticVersion("1.0.0.0"));
+
                 var mockPackageFileTools = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFileTools.Setup(x => x.EffectivePath).Returns("myToolsSample.dLl");
                 mockPackageFileTools.Setup(x => x.Path).Returns(@"tOols\myToolsSample.dLl");
@@ -498,7 +544,6 @@ namespace Nuget.PackageIndex.Tests
                 var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFile.Setup(x => x.EffectivePath).Returns("myRefFxSample.dLl");
                 mockPackageFile.Setup(x => x.Path).Returns(@"ref\dnx451\myRefFxSample.dLl");
-                mockPackageFile.Setup(x => x.SupportedFrameworks).Returns(new List<FrameworkName>());
 
                 PackageFiles.Add(mockPackageFile);
 
@@ -513,7 +558,7 @@ namespace Nuget.PackageIndex.Tests
                 {
                     FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
                                             @"ref\dnx451\myRefFxSample.dLl"),
-                    TargetFrameworks = new [] { "dnx451" }
+                    TargetFrameworks = new List<string> { "dnx451" }
                 };
 
                 PackageAssemblyMetadata.Add(assemblyMetadata);
@@ -526,11 +571,6 @@ namespace Nuget.PackageIndex.Tests
                 var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
                 mockPackageFile.Setup(x => x.EffectivePath).Returns("myLibFxSample.dLl");
                 mockPackageFile.Setup(x => x.Path).Returns(@"Lib\dnx451\myLibFxSample.dLl");
-                mockPackageFile.Setup(x => x.SupportedFrameworks).Returns(
-                        new List<FrameworkName>() {                     
-                            VersionUtility.ParseFrameworkName("net45"),
-                            VersionUtility.ParseFrameworkName("dnx451"),
-                        });
 
                 PackageFiles.Add(mockPackageFile);
 
@@ -545,7 +585,7 @@ namespace Nuget.PackageIndex.Tests
                 {
                     FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
                                             @"Lib\dnx451\myLibFxSample.dLl"),
-                    TargetFrameworks = new[] { "net45", "dnx451" }
+                    TargetFrameworks = new List<string> { "dnx451" }
                 };
 
                 PackageAssemblyMetadata.Add(assemblyMetadata);
@@ -553,13 +593,101 @@ namespace Nuget.PackageIndex.Tests
                 return this;
             }
 
+            public MockGenerator MockLibContractDll()
+            {
+                var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
+                mockPackageFile.Setup(x => x.EffectivePath).Returns("myLibFxSample.dLl");
+                mockPackageFile.Setup(x => x.Path).Returns(@"Lib\dnx451\myLibFxSample.dLl");
+
+                var mockPackageFileCore = new Mock<IPackageFile>(MockBehavior.Strict);
+                mockPackageFileCore.Setup(x => x.EffectivePath).Returns("myLibFxSample.dLl");
+                mockPackageFileCore.Setup(x => x.Path).Returns(@"Lib\dnxcore451\myLibFxSample.dLl");
+
+                var mockPackageFileContract = new Mock<IPackageFile>(MockBehavior.Strict);
+                mockPackageFileContract.Setup(x => x.EffectivePath).Returns("myLibFxSample.dLl");
+                mockPackageFileContract.Setup(x => x.Path).Returns(@"Lib\Contract\sampleBar.dLl");
+
+                PackageFiles.Add(mockPackageFile);
+                PackageFiles.Add(mockPackageFileContract);
+                PackageFiles.Add(mockPackageFileCore);
+
+                FileSystem.Setup(x => x.FileExists(Path.Combine(Path.GetDirectoryName(NupkgFile),
+                                                                @"Lib\dnx451\myLibFxSample.dLl"))).Returns(true);
+
+                FileSystem.Setup(x => x.FileExists(Path.Combine(Path.GetDirectoryName(NupkgFile),
+                                                                @"lib\contract\sampleBar.dll"))).Returns(true);
+                var packageFiles = new List<IPackageFile>
+                {
+                    mockPackageFile.Object,
+                    mockPackageFileContract.Object,
+                    mockPackageFileCore.Object
+                };
+
+                var assemblyMetadataDnx451 = new AssemblyMetadata
+                {
+                    FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
+                                            @"Lib\dnx451\myLibFxSample.dLl"),
+                    TargetFrameworks = new List<string> { "dnx451" }
+                };
+
+                var assemblyMetadataDnxCore451 = new AssemblyMetadata
+                {
+                    FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
+                            @"lib\contract\sampleBar.dll"),
+                    TargetFrameworks = new List<string> { "dnxcore451" }
+                };
+
+                PackageAssemblyMetadata.Add(assemblyMetadataDnx451);
+                PackageAssemblyMetadata.Add(assemblyMetadataDnxCore451);
+
+                return this;
+            }
+
+            public MockGenerator MockLibExplicitReferencesDll()
+            {
+                var mockPackageFile = new Mock<IPackageFile>(MockBehavior.Strict);
+                mockPackageFile.Setup(x => x.EffectivePath).Returns("myLibFxSample.dLl");
+                mockPackageFile.Setup(x => x.Path).Returns(@"lib\dnx451\mylibfxsample.dll");
+
+                var mockPackageFileCore = new Mock<IPackageFile>(MockBehavior.Strict);
+                mockPackageFileCore.Setup(x => x.EffectivePath).Returns("myLibFxSample2.dLl");
+                mockPackageFileCore.Setup(x => x.Path).Returns(@"lib\dnx451\mylibfxsample2.dll");
+
+                PackageFiles.Add(mockPackageFile);
+                PackageFiles.Add(mockPackageFileCore);
+
+                FileSystem.Setup(x => x.FileExists(Path.Combine(Path.GetDirectoryName(NupkgFile),
+                                                                @"lib\dnx451\mylibfxsample.dll"))).Returns(true);
+                var packageFiles = new List<IPackageFile>
+                {
+                    mockPackageFile.Object,
+                    mockPackageFileCore.Object
+                };
+
+                var assemblyMetadataDnx451 = new AssemblyMetadata
+                {
+                    FullPath = Path.Combine(Path.GetDirectoryName(NupkgFile),
+                                            @"lib\dnx451\mylibfxsample.dll"),
+                    TargetFrameworks = new List<string> { "dnx451" }
+                };
+
+                PackageAssemblyMetadata.Add(assemblyMetadataDnx451);
+
+                NugetPackage.Setup(x => x.PackageAssemblyReferences).Returns(new List<PackageReferenceSet>
+                {
+                    new PackageReferenceSet(DnxVersionUtility.ParseFrameworkName("dnx451"), new [] { @"mylibfxsample.dll" })
+                });
+
+                return this;
+            }
             public MockGenerator MockPackageInfo()
             {
                 var packageId = Path.GetFileNameWithoutExtension(NupkgFile);
-                NugetHelper.Setup(x => x.GetPackageFiles()).Returns(PackageFiles.Select(x => x.Object));
-                NugetHelper.Setup(x => x.GetPackageSupportedFrameworks()).Returns(PackageFrameworks);
-                NugetHelper.Setup(x => x.GetPackageId()).Returns(packageId);
-                NugetHelper.Setup(x => x.GetPackageVersion()).Returns("1.0.0.0");
+                NugetPackage.Setup(x => x.GetFiles()).Returns(PackageFiles.Select(x => x.Object));
+                NugetPackage.Setup(x => x.GetSupportedFrameworks()).Returns(PackageFrameworks);
+                NugetPackage.Setup(x => x.Id).Returns(packageId);
+                NugetPackage.Setup(x => x.Version).Returns(new SemanticVersion("1.0.0.0"));
+                NugetPackage.Setup(x => x.PackageAssemblyReferences).Returns(new List<PackageReferenceSet>());
 
                 return this;
             }
@@ -569,7 +697,7 @@ namespace Nuget.PackageIndex.Tests
             {
                 FileSystem.Setup(x => x.DirectoryExists(SourceDirectory)).Returns(true);
                 FileSystem.Setup(x => x.DirectoryGetFiles(SourceDirectory, "*.nupkg", SearchOption.AllDirectories))
-                          .Returns(new [] { NupkgFile });
+                          .Returns(new[] { NupkgFile });
 
                 return this;
             }
