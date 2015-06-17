@@ -629,12 +629,12 @@ namespace Nuget.PackageIndex.NugetHelpers
         /// <returns></returns>
         public static FrameworkName ParseFrameworkFolderName(string path, bool strictParsing, out string effectivePath)
         {
-            // The path for a reference might look like this for assembly foo.dll:
-            // foo.dll
-            // sub\foo.dll
-            // {FrameworkName}{Version}\foo.dll
-            // {FrameworkName}{Version}\sub1\foo.dll
-            // {FrameworkName}{Version}\sub1\sub2\foo.dll
+            // The path for a reference might look like this for assembly bar.dll:
+            // bar.dll
+            // sub\bar.dll
+            // {FrameworkName}{Version}\bar.dll
+            // {FrameworkName}{Version}\sub1\bar.dll
+            // {FrameworkName}{Version}\sub1\sub2\bar.dll
 
             // Get the target framework string if specified
             string targetFrameworkString = Path.GetDirectoryName(path).Split(Path.DirectorySeparatorChar).First();
