@@ -85,6 +85,9 @@
     <Compile Include="Abstractions\IFileSystem.cs" />
     <Compile Include="IIndexSettings.cs" />
     <Compile Include="IndexSettings.cs" />
+    <Compile Include="Client\IAddPackageAnalyzer.cs" />
+    <Compile Include="Client\AddPackageAnalyzer.cs" />
+    <Compile Include="Client\IAddPackageAnalyzerFactory.cs" />
     <Compile Include="NugetHelpers\TfmPackageAssemblyMatcher.cs" />
     <Compile Include="NugetHelpers\Asset.cs" />
     <Compile Include="NugetHelpers\PatternExpression.cs" />
@@ -98,11 +101,9 @@
     <Compile Include="NugetHelpers\SelectionCriteriaBuilder.cs" />
     <Compile Include="NugetHelpers\PatternDefinitions.cs" />
     <Compile Include="NugetHelpers\DnxVersionUtility.cs" />
-    <Compile Include="Client\Analyzers\AddPackageDiagnosticAnalyzer.cs" />
     <Compile Include="Client\StringExtensions.cs" />
     <Compile Include="Client\ISyntaxHelper.cs" />
     <Compile Include="Client\IProjectMetadataProvider.cs" />
-    <Compile Include="Client\Analyzers\UnknownIdentifierDiagnosticAnalyzerBase.cs" />
     <Compile Include="Client\CodeFixes\IPackageInstaller.cs" />
     <Compile Include="Client\CodeFixes\AddPackageOperation.cs" />
     <Compile Include="Client\CodeFixes\AddPackageCodeAction.cs" />

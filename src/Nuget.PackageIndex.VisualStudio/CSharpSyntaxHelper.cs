@@ -12,6 +12,13 @@ namespace Nuget.PackageIndex.VisualStudio
     /// </summary>
     public class CSharpSyntaxHelper : ISyntaxHelper
     {
+        private const string CS1061 = "CS1061"; // error CS1061: 'C' does not contain a definition for 'Foo' and no extension method 'Foo' accepting a first argument of type 'C' could be found
+        private const string CS0103 = "CS0103"; // error CS0103: The name 'Foo' does not exist in the current context
+        private const string CS0246 = "CS0246"; // error CS0246: The type or namespace name 'Version' could not be found
+        private const string CS0234 = "CS0234"; // error CS0234: The type or namespace name 'Abc' does not exist in the namespace 'Bar' (are you missing an assembly reference?)
+
+        private string[] _supportedDiagnostics = new[] { CS1061, CS0103, CS0246, CS0234 };
+
         public bool IsImport(SyntaxNode node, out string importFullName)
         {
             importFullName = string.Empty;
@@ -25,6 +32,16 @@ namespace Nuget.PackageIndex.VisualStudio
             var usingDirective = node.GetAncestor<UsingDirectiveSyntax>();
             importFullName = usingDirective == null ? null : usingDirective.Name.ToString();
             return usingDirective != null;
+        }
+
+        #region ISyntaxHelper
+
+        public string[] SupportedDiagnostics
+        {
+            get
+            {
+                return _supportedDiagnostics;
+            }
         }
 
         public bool IsExtension(SyntaxNode node)
@@ -71,5 +88,7 @@ namespace Nuget.PackageIndex.VisualStudio
 
             return true;
         }
+
+        #endregion
     }
 }
