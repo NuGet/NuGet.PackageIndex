@@ -31,5 +31,20 @@ namespace Nuget.PackageIndex.Abstractions
         {
             return File.GetLastWriteTime(fullPath);
         }
+
+        public string FileReadAllText(string fullPath)
+        {
+            return File.ReadAllText(fullPath);
+        }
+
+        public void FileWriteAllText(string fullPath, string content)
+        {
+            File.WriteAllText(fullPath, content);
+        }
+
+        public void FileDelete(string fullPath)
+        {
+            File.Delete(fullPath);
+        }
     }
 }

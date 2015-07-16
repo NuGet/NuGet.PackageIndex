@@ -56,6 +56,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.CodeAnalysis.Workspaces.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="NuGet.Core, Version=2.8.50926.602, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\NuGet.Core.dll</HintPath>
@@ -79,6 +83,8 @@
     <Compile Include="Abstractions\NugetHelper.cs" />
     <Compile Include="Abstractions\INugetHelper.cs" />
     <Compile Include="Abstractions\IFileSystem.cs" />
+    <Compile Include="ISettingsJson.cs" />
+    <Compile Include="SettingsJson.cs" />
     <Compile Include="NugetHelpers\TfmPackageAssemblyMatcher.cs" />
     <Compile Include="NugetHelpers\Asset.cs" />
     <Compile Include="NugetHelpers\PatternExpression.cs" />

@@ -20,6 +20,24 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
     /// CSharp code fix provider adding a missing package and using statement to the project,
     /// for given unknown type if this type information was found in the package index.
     /// </summary>
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.AddUsingOrImport)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.AddMissingReference)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.FullyQualify)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.FixIncorrectExitContinue)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateConstructor)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateEndConstruct)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateEnumMember)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateEvent)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateVariable)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateMethod)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.GenerateType)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.ImplementAbstractClass)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.ImplementInterface)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.MoveToTopOfFile)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.RemoveUnnecessaryCast)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.RemoveUnnecessaryImports)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.SimplifyNames)]
+    [ExtensionOrder(After = RoslynPredefinedCodeFixProviderNames.SpellCheck)]/// 
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = ProviderName), Shared]
     public sealed class CSharpAddPackageCodeFixProvider : AddPackageCodeFixProviderBase
     {

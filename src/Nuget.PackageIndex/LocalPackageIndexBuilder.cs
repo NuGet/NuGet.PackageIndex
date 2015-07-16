@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-using Nuget.PackageIndex.Engine;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+using Nuget.PackageIndex.Engine;
 using ILog = Nuget.PackageIndex.Logging.ILog;
 
 namespace Nuget.PackageIndex
@@ -57,7 +58,6 @@ namespace Nuget.PackageIndex
             _logger = logger;
             _index = index;
             _discoverer = discoverer;
-
             InitializePackageSources();
         }
 
@@ -117,7 +117,7 @@ namespace Nuget.PackageIndex
                         // remove packages from index that don't exist on disk anymore
                         foreach (var indexedPackage in indexedPackages)
                         {
-                            if (File.Exists(indexedPackage.Path))
+                            if (File.Exists(indexedPackage.Path) && ShouldInclude(indexedPackage.Name))
                             {
                                 existentPackages.Add(indexedPackage.Path);
                             }
@@ -136,7 +136,13 @@ namespace Nuget.PackageIndex
                     {
                         if (cancellationToken != null && cancellationToken.IsCancellationRequested)
                         {
-                            return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed }; ;
+                            return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed };
+                        }
+
+                        if (!ShouldInclude(package))
+                        {
+                            _logger.WriteInformation("Excluding package {0} from the indexing.", package.LocalPath);
+                            continue;
                         }
 
                         var errors = _index.AddPackage(package, force: false);
@@ -187,9 +193,16 @@ namespace Nuget.PackageIndex
             var package = _discoverer.GetPackageMetadataFromPath(nupkgFilePath);
             if (package != null)
             {
-                errors = _index.AddPackage(package, force);
+                if (ShouldInclude(package))
+                {
+                    errors = _index.AddPackage(package, force);                    
+                }
+                else
+                {
+                    _logger.WriteInformation("Excluding package {0} from the indexing.", package.LocalPath);
+                }
             }
-
+            
             stopWatch.Stop();
             _logger.WriteInformation("Finished package indexing.");
 
@@ -207,6 +220,27 @@ namespace Nuget.PackageIndex
             _logger.WriteInformation("Finished package removing.");
 
             return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+        }
+
+        private bool ShouldInclude(IPackageMetadata package)
+        {
+            return ShouldInclude(package.Id);
+        }
+
+        private bool ShouldInclude(string packageId)
+        {
+            var result = false;
+
+            try
+            {
+                result = _index.Settings.IncludePackagePatterns.Any(x => Regex.IsMatch(packageId, x, RegexOptions.IgnoreCase | RegexOptions.Singleline));
+            }
+            catch (Exception e)
+            {
+                Debug.Write(e.ToString());
+            }
+
+            return result;
         }
     }
 }

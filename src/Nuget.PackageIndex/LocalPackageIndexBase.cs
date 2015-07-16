@@ -97,6 +97,20 @@ namespace Nuget.PackageIndex
             }
         }
 
+        private ISettingsJson _settings;
+        public ISettingsJson Settings
+        {
+            get
+            {
+                if (_settings == null)
+                {
+                    _settings = new SettingsJson(Location);
+                }
+
+                return _settings;
+            }
+        }
+
         public IList<PackageIndexError> AddPackage(IPackageMetadata package, bool force)
         {
             try

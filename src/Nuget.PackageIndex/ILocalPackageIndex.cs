@@ -16,6 +16,7 @@ namespace Nuget.PackageIndex
         bool IndexExists { get; }
         DateTime LastWriteTime { get; }
         string Location { get; }
+        ISettingsJson Settings { get; }
         IList<PackageIndexError> AddPackage(IPackageMetadata package, bool force);
         IList<PackageIndexError> RemovePackage(string packageName);
         IList<PackageInfo> GetPackages();

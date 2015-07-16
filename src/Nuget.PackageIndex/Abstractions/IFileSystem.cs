@@ -12,5 +12,8 @@ namespace Nuget.PackageIndex.Abstractions
         bool DirectoryExists(string fullPath);
         string[] DirectoryGetFiles(string path, string searchPattern, SearchOption searchOption);
         DateTime FileGetLastWriteTime(string fullPath);
+        string FileReadAllText(string fullPath);
+        void FileWriteAllText(string fullPath, string content);
+        void FileDelete(string fullPath);
     }
 }

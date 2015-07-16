@@ -101,6 +101,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CodeFixes\CSharp\RoslynPredefinedCodeFixProviderNames.cs" />
     <Compile Include="CSharpSyntaxHelper.cs" />
     <Compile Include="IPackageIndexHostResourceProvider.cs" />
     <Compile Include="IVsProjectMetadataProvider.cs" />
