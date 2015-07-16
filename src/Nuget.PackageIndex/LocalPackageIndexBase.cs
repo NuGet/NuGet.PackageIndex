@@ -97,14 +97,14 @@ namespace Nuget.PackageIndex
             }
         }
 
-        private ISettingsJson _settings;
-        public ISettingsJson Settings
+        private IIndexSettings _settings;
+        public IIndexSettings Settings
         {
             get
             {
                 if (_settings == null)
                 {
-                    _settings = new SettingsJson(Location);
+                    _settings = new IndexSettings(Location);
                 }
 
                 return _settings;

@@ -16,7 +16,7 @@ namespace Nuget.PackageIndex
     /// exist, creates a new settings.json with default settings. When user modifies, settings.json
     /// changes are in effect after VS is re-opened.
     /// </summary>
-    public class SettingsJson : ISettingsJson
+    public class IndexSettings : IIndexSettings
     {
         private const string SettingJsonFileName = "settings.json";
         private const string DefaultJsonContent = @"{
@@ -45,13 +45,13 @@ namespace Nuget.PackageIndex
         private readonly IFileSystem _fileSystem;
         private string _settingsJsonPath;
 
-        public SettingsJson(string indexDirectory)
+        public IndexSettings(string indexDirectory)
             : this(indexDirectory, new FileSystem())
         {
 
         }
 
-        internal SettingsJson(string indexDirectory, IFileSystem fileSystem)
+        internal IndexSettings(string indexDirectory, IFileSystem fileSystem)
         {
             _fileSystem = fileSystem;
             _settingsJsonPath = Path.Combine(indexDirectory, SettingJsonFileName);
@@ -60,14 +60,15 @@ namespace Nuget.PackageIndex
         private JObject InitializeSettingsJson()
         {
             JObject jObject = null;
+
             if (_fileSystem.FileExists(_settingsJsonPath))
             {
-                jObject = ReadJsonFromFile(_settingsJsonPath);
+                jObject = Read(_settingsJsonPath);
             } 
             else
             {
                 jObject = GenerateDefaultSettingsJson();
-                WriteJsonToFile(jObject);
+                Write(jObject);
             }
 
             return jObject;
@@ -76,7 +77,8 @@ namespace Nuget.PackageIndex
         private JObject GenerateDefaultSettingsJson()
         {
             var jObject = JObject.Parse(DefaultJsonContent);
-            JArray includePackagePaterns = (JArray)jObject["includePackagePatterns"];
+            var includePackagePaterns = (JArray)jObject["includePackagePatterns"];
+
             foreach(var pattern in _defaultIncludeRules)
             {
                 includePackagePaterns.Add(pattern);
@@ -85,7 +87,7 @@ namespace Nuget.PackageIndex
             return jObject;
         }
 
-        private JObject ReadJsonFromFile(string filePath)
+        private JObject Read(string filePath)
         {
             JObject result = null;
 
@@ -102,7 +104,7 @@ namespace Nuget.PackageIndex
             return result;
         }
 
-        private void WriteJsonToFile(JObject json)
+        private void Write(JObject json)
         {
             try
             {
@@ -148,9 +150,9 @@ namespace Nuget.PackageIndex
             return null;
         }
 
-        private List<string> GetIncludePackagePatterns()
+        private IList<string> GetIncludePackagePatterns()
         {
-            List<string> result = null;
+            IList<string> result = null;
 
             var includeRulesFromJsonFile = ReadJsonArray("includePackagePatterns");
             if (includeRulesFromJsonFile != null)
@@ -161,10 +163,8 @@ namespace Nuget.PackageIndex
             return result ?? new List<string>(_defaultIncludeRules);
         }
 
-        #region ISettingsJson 
-
-        private List<string> _includePackagePatterns;
-        public List<string> IncludePackagePatterns
+        private IList<string> _includePackagePatterns;
+        public IList<string> IncludePackagePatterns
         {
             get
             {
@@ -176,7 +176,5 @@ namespace Nuget.PackageIndex
                 return _includePackagePatterns;
             }
         }
-
-        #endregion
     }
 }

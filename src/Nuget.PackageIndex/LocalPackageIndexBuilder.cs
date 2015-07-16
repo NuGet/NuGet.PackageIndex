@@ -78,7 +78,9 @@ namespace Nuget.PackageIndex
             return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x));
         }
 
-         public Task<LocalPackageIndexBuilderResult> BuildAsync(bool shouldClean = false, bool newOnly = false, CancellationToken cancellationToken = default(CancellationToken))
+         public Task<LocalPackageIndexBuilderResult> BuildAsync(bool shouldClean = false, 
+                                                                bool newOnly = false, 
+                                                                CancellationToken cancellationToken = default(CancellationToken))
         {
             // Fire and forget. While index is building, it will be locked from
             // other write attempts. In meanwhile readers would just not be able 
@@ -129,7 +131,11 @@ namespace Nuget.PackageIndex
                         }
                     }
 
-                    var packages = _discoverer.DiscoverPackages(_packageSources, existentPackages, newOnly, _index.LastWriteTime, cancellationToken).ToList();
+                    var packages = _discoverer.DiscoverPackages(_packageSources, 
+                                                                existentPackages, 
+                                                                newOnly, 
+                                                                _index.LastWriteTime, 
+                                                                cancellationToken).ToList();
                     _logger.WriteVerbose("Found {0} packages to be added to the index.", packages.Count());
 
                     foreach (var package in packages)
@@ -158,7 +164,11 @@ namespace Nuget.PackageIndex
                 stopWatch.Stop();
                 _logger.WriteInformation("Finished building index.");
 
-                return new LocalPackageIndexBuilderResult { Success = success, TimeElapsed = stopWatch.Elapsed };
+                return new LocalPackageIndexBuilderResult
+                {
+                    Success = success,
+                    TimeElapsed = stopWatch.Elapsed
+                };
             }, PackageIndexFactory.LocalIndexCancellationTokenSource.Token);
         }
 
@@ -172,7 +182,11 @@ namespace Nuget.PackageIndex
             stopWatch.Stop();
             _logger.WriteInformation("Finished cleaning index, index now is empty.");
 
-            return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+            return new LocalPackageIndexBuilderResult
+            {
+                Success = errors == null || !errors.Any(),
+                TimeElapsed = stopWatch.Elapsed
+            };
         }
 
         public LocalPackageIndexBuilderResult Rebuild()
@@ -206,7 +220,11 @@ namespace Nuget.PackageIndex
             stopWatch.Stop();
             _logger.WriteInformation("Finished package indexing.");
 
-            return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+            return new LocalPackageIndexBuilderResult
+            {
+                Success = errors == null || !errors.Any(),
+                TimeElapsed = stopWatch.Elapsed
+            };
         }
 
         public LocalPackageIndexBuilderResult RemovePackage(string packageName, bool force = false)
@@ -219,7 +237,11 @@ namespace Nuget.PackageIndex
             stopWatch.Stop();
             _logger.WriteInformation("Finished package removing.");
 
-            return new LocalPackageIndexBuilderResult { Success = errors == null || !errors.Any(), TimeElapsed = stopWatch.Elapsed };
+            return new LocalPackageIndexBuilderResult
+            {
+                Success = errors == null || !errors.Any(),
+                TimeElapsed = stopWatch.Elapsed
+            };
         }
 
         private bool ShouldInclude(IPackageMetadata package)
@@ -233,7 +255,8 @@ namespace Nuget.PackageIndex
 
             try
             {
-                result = _index.Settings.IncludePackagePatterns.Any(x => Regex.IsMatch(packageId, x, RegexOptions.IgnoreCase | RegexOptions.Singleline));
+                result = _index.Settings.IncludePackagePatterns.Any(
+                    x => Regex.IsMatch(packageId, x, RegexOptions.IgnoreCase | RegexOptions.Singleline));
             }
             catch (Exception e)
             {

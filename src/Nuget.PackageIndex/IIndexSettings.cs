@@ -7,8 +7,8 @@ namespace Nuget.PackageIndex
     /// <summary>
     /// Index settings
     /// </summary>
-    public interface ISettingsJson
+    public interface IIndexSettings
     {
-        List<string> IncludePackagePatterns { get; }
+        IList<string> IncludePackagePatterns { get; }
     }
 }

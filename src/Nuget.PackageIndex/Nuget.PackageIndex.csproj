@@ -83,8 +83,8 @@
     <Compile Include="Abstractions\NugetHelper.cs" />
     <Compile Include="Abstractions\INugetHelper.cs" />
     <Compile Include="Abstractions\IFileSystem.cs" />
-    <Compile Include="ISettingsJson.cs" />
-    <Compile Include="SettingsJson.cs" />
+    <Compile Include="IIndexSettings.cs" />
+    <Compile Include="IndexSettings.cs" />
     <Compile Include="NugetHelpers\TfmPackageAssemblyMatcher.cs" />
     <Compile Include="NugetHelpers\Asset.cs" />
     <Compile Include="NugetHelpers\PatternExpression.cs" />
