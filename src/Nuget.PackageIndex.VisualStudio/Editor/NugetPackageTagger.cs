@@ -32,6 +32,11 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
             {
                 try
                 {
+                    if (span.Snapshot == null)
+                    {
+                        continue;
+                    }
+
                     var document = span.Snapshot.GetOpenDocumentInCurrentContextWithChanges();
                     if (document == null)
                     {
@@ -80,10 +85,20 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
                     }
 
                     var diagnostics = model.GetDiagnostics();
-                    if (diagnostics.Any(x =>
-                        analyzer.SyntaxHelper.SupportedDiagnostics.Any(y => y.Equals(x.Id))
-                        && x.Location.GetLineSpan().StartLinePosition.Line == currentSpanLine.LineNumber
-                        && analyzer.CanSuggestPackage(x.Location.SourceTree.GetRoot().FindNode(x.Location.SourceSpan), projects)))
+                    if (diagnostics.Any(x => 
+                        {
+                            if (analyzer.SyntaxHelper.SupportedDiagnostics.Any(y => y.Equals(x.Id))
+                                && x.Location.GetLineSpan().StartLinePosition.Line == currentSpanLine.LineNumber)
+                            {
+                                var suggestions = analyzer.GetSuggestions(x.Location.SourceTree.GetRoot().FindNode(x.Location.SourceSpan), projects);
+                                if (suggestions != null && suggestions.Count() > 0)
+                                {
+                                    return true;
+                                }
+                            }
+
+                            return false;
+                        }))
                     {
                         resultTags.Add(new TagSpan<NugetPackageTag>(new SnapshotSpan(span.Start, 0), new NugetPackageTag()));
                     }

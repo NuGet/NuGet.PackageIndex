@@ -57,13 +57,13 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
         /// <summary>
         /// Get the image based on the moniker, backColor and dimensions
         /// </summary>
-        public static Bitmap GetImage(ImageMoniker moniker, System.Drawing.Color backColor, int height, int width, bool isScalingRequired)
+        public static Bitmap GetImage(ImageMoniker moniker, System.Drawing.Color backColor, int height, int width, bool scalingRequired)
         {
             m_attributes.Background = (uint)backColor.ToArgb();
             m_attributes.LogicalHeight = height;
             m_attributes.LogicalWidth = width;
 
-            if (isScalingRequired)
+            if (scalingRequired)
             {
                 m_attributes.LogicalHeight = (int)(height * DpiHelper.LogicalToDeviceUnitsScalingFactorY);
                 m_attributes.LogicalWidth = (int)(width * DpiHelper.LogicalToDeviceUnitsScalingFactorX);

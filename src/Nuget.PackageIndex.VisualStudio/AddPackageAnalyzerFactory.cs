@@ -9,7 +9,9 @@ using Nuget.PackageIndex.Client;
 namespace Nuget.PackageIndex.VisualStudio
 {
     /// <summary>
-    /// CSharp Language specific helper that can determine if syntax node is one of supported types
+    /// Factory that can produce package analyzers for given file. In particular, it checks file
+    /// type and returns analyzer correspodning to the language of the file. At this moment we have
+    /// support only for C#. Later VB could be added here etc.
     /// </summary>
     [Export(typeof(IAddPackageAnalyzerFactory))]
     public class AddPackageAnalyzerFactory : IAddPackageAnalyzerFactory

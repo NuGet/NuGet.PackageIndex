@@ -14,7 +14,6 @@ namespace Nuget.PackageIndex.Client
     public interface IAddPackageAnalyzer
     {
         ISyntaxHelper SyntaxHelper { get; }
-        bool CanSuggestPackage(SyntaxNode node, IEnumerable<ProjectMetadata> projects);
         IList<IPackageIndexModelInfo> GetSuggestions(SyntaxNode node, IEnumerable<ProjectMetadata> projects);
     }
 }

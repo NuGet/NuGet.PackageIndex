@@ -48,13 +48,6 @@ namespace Nuget.PackageIndex.Client
             }
         }
 
-        public bool CanSuggestPackage(SyntaxNode node, IEnumerable<ProjectMetadata> projects)
-        {
-            var suggestions = GetSuggestions(node, projects);
-
-            return suggestions != null && suggestions.Count() > 0;
-        }
-
         public IList<IPackageIndexModelInfo> GetSuggestions(SyntaxNode node, IEnumerable<ProjectMetadata> projects)
         {
             if (node == null || projects == null || !projects.Any())
@@ -85,7 +78,7 @@ namespace Nuget.PackageIndex.Client
 
             if (potentialSuggestions == null || !potentialSuggestions.Any())
             {
-                return new List<IPackageIndexModelInfo>();
+                return Enumerable.Empty<IPackageIndexModelInfo>();
             }
 
             return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
@@ -106,7 +99,7 @@ namespace Nuget.PackageIndex.Client
 
             if (potentialSuggestions == null || !potentialSuggestions.Any())
             {
-                return new List<IPackageIndexModelInfo>();
+                return Enumerable.Empty<IPackageIndexModelInfo>();
             }
 
             return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
@@ -127,7 +120,7 @@ namespace Nuget.PackageIndex.Client
 
             if (potentialSuggestions == null || !potentialSuggestions.Any())
             {
-                return new List<IPackageIndexModelInfo>();
+                return Enumerable.Empty<IPackageIndexModelInfo>();
             }
 
             return TargetFrameworkHelper.GetSupportedPackages(potentialSuggestions,
