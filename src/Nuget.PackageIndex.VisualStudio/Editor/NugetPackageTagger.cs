@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Tagging;
+using Microsoft.VisualStudio.Text.Editor;
 using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Editor
@@ -16,17 +17,18 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
     internal class NugetPackageTagger : ITagger<NugetPackageTag>
     {
         private readonly IAddPackageAnalyzerFactory _analyzerFactory;
+        private readonly ITextView _textView;
 
-        internal NugetPackageTagger(IAddPackageAnalyzerFactory analyzerFactory)
+        internal NugetPackageTagger(ITextView textView, IAddPackageAnalyzerFactory analyzerFactory)
         {
             _analyzerFactory = analyzerFactory;
+            _textView = textView;
+            _textView.LayoutChanged += OnLayoutChanged;
         }
 
         IEnumerable<ITagSpan<NugetPackageTag>> ITagger<NugetPackageTag>.GetTags(NormalizedSnapshotSpanCollection spans)
         {
             var projectsMap = new Dictionary<string, IEnumerable<ProjectMetadata>>(StringComparer.OrdinalIgnoreCase);
-
-            // TODO check UI thread
             var resultTags = new List<ITagSpan<NugetPackageTag>>();
             foreach (var span in spans)
             {
@@ -85,20 +87,20 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
                     }
 
                     var diagnostics = model.GetDiagnostics();
-                    if (diagnostics.Any(x => 
+                    if (diagnostics.Any(x =>
+                    {
+                        if (analyzer.SyntaxHelper.SupportedDiagnostics.Any(y => y.Equals(x.Id))
+                            && x.Location.GetLineSpan().StartLinePosition.Line == currentSpanLine.LineNumber)
                         {
-                            if (analyzer.SyntaxHelper.SupportedDiagnostics.Any(y => y.Equals(x.Id))
-                                && x.Location.GetLineSpan().StartLinePosition.Line == currentSpanLine.LineNumber)
+                            var suggestions = analyzer.GetSuggestions(x.Location.SourceTree.GetRoot().FindNode(x.Location.SourceSpan), projects);
+                            if (suggestions != null && suggestions.Count() > 0)
                             {
-                                var suggestions = analyzer.GetSuggestions(x.Location.SourceTree.GetRoot().FindNode(x.Location.SourceSpan), projects);
-                                if (suggestions != null && suggestions.Count() > 0)
-                                {
-                                    return true;
-                                }
+                                return true;
                             }
+                        }
 
-                            return false;
-                        }))
+                        return false;
+                    }))
                     {
                         resultTags.Add(new TagSpan<NugetPackageTag>(new SnapshotSpan(span.Start, 0), new NugetPackageTag()));
                     }
@@ -114,11 +116,14 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
-        private void OnTagsChanged()
+        private void OnLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         {
-            if (TagsChanged != null)
+            foreach (var span in e.NewOrReformattedSpans)
             {
-                TagsChanged(this, new SnapshotSpanEventArgs(new SnapshotSpan()));
+                if (TagsChanged != null)
+                {
+                    TagsChanged(this, new SnapshotSpanEventArgs(span));
+                }
             }
         }
     }

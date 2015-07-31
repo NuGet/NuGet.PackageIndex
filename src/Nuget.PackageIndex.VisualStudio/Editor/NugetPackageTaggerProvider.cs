@@ -26,7 +26,7 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
                 throw new ArgumentNullException("buffer");
             }
 
-            return new NugetPackageTagger(AnalyzerFactory) as ITagger<T>;
+            return new NugetPackageTagger(textView, AnalyzerFactory) as ITagger<T>;
         }
     }
 }
