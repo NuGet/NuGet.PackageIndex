@@ -107,13 +107,26 @@ namespace Nuget.PackageIndex.Client
 
         private IEnumerable<IPackageIndexModelInfo> CollectTypeSuggestions(SyntaxNode node, IEnumerable<TargetFrameworkMetadata> distinctTargetFrameworks)
         {
-            string entityName;
-            IEnumerable<IPackageIndexModelInfo> potentialSuggestions = null;
+            var potentialSuggestions = new List<IPackageIndexModelInfo>();
             if (_syntaxHelper.IsType(node))
             {
-                entityName = node.ToString().NormalizeGenericName();
+                var entityNamesToSearchFor = new List<string>();
+                var entityName = node.ToString().NormalizeGenericName();
+                entityNamesToSearchFor.Add(entityName);
 
-                potentialSuggestions = _packageSearcher.SearchType(entityName);
+                if (_syntaxHelper.IsAttribute(node) && !entityName.EndsWith("Attribute"))
+                {
+                    entityNamesToSearchFor.Add(entityName + "Attribute");
+                }
+
+                foreach (var entity in entityNamesToSearchFor)
+                {
+                    var suggestions = _packageSearcher.SearchType(entity);
+                    if (suggestions != null)
+                    {
+                        potentialSuggestions.AddRange(suggestions);
+                    }
+                }
             }
 
             if (potentialSuggestions == null || !potentialSuggestions.Any())

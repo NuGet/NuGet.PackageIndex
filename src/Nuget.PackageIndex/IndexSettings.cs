@@ -19,9 +19,10 @@ namespace Nuget.PackageIndex
     /// </summary>
     public class IndexSettings : IIndexSettings
     {
-        private const string SettingJsonFileName = "settings.json";
+        private const string SettingJsonFileName = "packageIndexSettings.json";
         private const string DefaultJsonContent = @"{
-    'includePackagePatterns' : []
+  'version': '1.0.0.0',
+  'includePackagePatterns': []
 }
 ";
         /// <summary>
@@ -34,13 +35,10 @@ namespace Nuget.PackageIndex
         /// </summary>
         private readonly string[] _defaultIncludeRules = new []
         {
-            @"dnx\..+",
-            @"entityframework\..+",
-            @"entityframework7\..+",
-            @"microsoft\..+",
-            @"newtonsoft\..+",
             @"system\..+",
-            @"remotion\..+"
+            @"microsoft\..+",
+            @"entityframework\..+",
+            @"newtonsoft\..+"
         };
 
         private readonly IFileSystem _fileSystem;

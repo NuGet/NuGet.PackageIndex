@@ -14,6 +14,7 @@ namespace Nuget.PackageIndex.Client.Analyzers
         bool IsExtension(SyntaxNode node);
         bool IsType(SyntaxNode node);
         bool IsSupported(SyntaxNode node);
+        bool IsAttribute(SyntaxNode node);
         string[] SupportedDiagnostics { get; }
     }
 }

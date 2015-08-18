@@ -35,6 +35,11 @@ namespace Nuget.PackageIndex.VisualStudio
             return usingDirective != null;
         }
 
+        public bool IsAttribute(SyntaxNode node)
+        {
+            return  node.GetAncestor<AttributeSyntax>() != null;
+        }
+
         #region ISyntaxHelper
 
         public string[] SupportedDiagnostics
