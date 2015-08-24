@@ -16,7 +16,8 @@ namespace Nuget.PackageIndex
                                                       HashSet<string> indexedPackages, 
                                                       bool newOnly, 
                                                       DateTime lastIndexModifiedTime, 
-                                                      CancellationToken cancellationToken);
-        IPackageMetadata GetPackageMetadataFromPath(string packagePath);
+                                                      CancellationToken cancellationToken,
+                                                      Func<string, bool> shouldIncludeFunc);
+        IPackageMetadata GetPackageMetadataFromPath(string packagePath, Func<string, bool> shouldIncludeFunc);
     }
 }

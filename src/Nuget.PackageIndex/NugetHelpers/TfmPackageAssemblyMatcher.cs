@@ -21,7 +21,7 @@ namespace Nuget.PackageIndex.NugetHelpers
                 return null;
             }
 
-            var files = packageAssemblies.Select(p => p.Replace(Path.DirectorySeparatorChar, '/'));
+            var files = packageAssemblies.Select(p => p.Replace(Path.DirectorySeparatorChar, '/')).ToList();
             var contentItems = new ContentItemCollection();
             contentItems.Load(files);
 
@@ -64,7 +64,7 @@ namespace Nuget.PackageIndex.NugetHelpers
 
             // See if there's a list of specific references defined for this target framework
             IEnumerable<PackageReferenceSet> referenceSets;
-            if (DnxVersionUtility.GetNearest(framework, package.PackageAssemblyReferences, out referenceSets))
+            if (DnxVersionUtility.GetNearest(framework, package.PackageAssemblyReferences.ToList(), out referenceSets))
             {
                 // Get the first compatible reference set
                 var referenceSet = referenceSets.FirstOrDefault();
@@ -77,7 +77,7 @@ namespace Nuget.PackageIndex.NugetHelpers
                 }
             }
 
-            return allReferencesGroupAssemblies.Select(p => p.Replace('/', Path.DirectorySeparatorChar));
+            return allReferencesGroupAssemblies.Select(p => p.Replace('/', Path.DirectorySeparatorChar)).ToList();
         }
     }
 }

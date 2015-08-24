@@ -40,6 +40,9 @@ namespace Nuget.PackageIndex
             LocalIndexCancellationTokenSource.Cancel();
         }
 
+        /// <summary>
+        /// TODO: remove create if not exist. Host should create index explicitly , however searchers should not create it
+        /// </summary>
         public ILocalPackageIndex GetLocalIndex(bool createIfNotExists = true)
         {
             lock(_indexLock)

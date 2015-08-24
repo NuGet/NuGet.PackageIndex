@@ -74,9 +74,9 @@ namespace Nuget.PackageIndex
             _packageSources = sources.Select(x => Environment.ExpandEnvironmentVariables(x)).ToList();
         }
 
-        public IEnumerable<string> GetPackageDirectories()
+        public IList<string> GetPackageDirectories()
         {
-            return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x));
+            return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x)).ToList();
         }
 
          public Task<LocalPackageIndexBuilderResult> BuildAsync(bool shouldClean = false, 
@@ -132,13 +132,15 @@ namespace Nuget.PackageIndex
                         }
                     }
 
-                    var packages = _discoverer.DiscoverPackages(_packageSources, 
-                                                                existentPackages, 
-                                                                newOnly, 
-                                                                _index.LastWriteTime, 
-                                                                cancellationToken).ToList();
-                    _logger.WriteVerbose("Found {0} packages to be added to the index.", packages.Count());
+                    var packages = _discoverer.DiscoverPackages(_packageSources,
+                                                                existentPackages,
+                                                                newOnly,
+                                                                _index.LastWriteTime,
+                                                                cancellationToken,
+                                                                ShouldInclude);
 
+                    _logger.WriteVerbose("Found packages to be added to the index.");
+                    int counter = 0;
                     foreach (var package in packages)
                     {
                         if (cancellationToken != null && cancellationToken.IsCancellationRequested)
@@ -146,15 +148,12 @@ namespace Nuget.PackageIndex
                             return new LocalPackageIndexBuilderResult { Success = false, TimeElapsed = stopWatch.Elapsed };
                         }
 
-                        if (!ShouldInclude(package))
-                        {
-                            _logger.WriteInformation("Excluding package {0} from the indexing.", package.LocalPath);
-                            continue;
-                        }
-
                         var errors = _index.AddPackage(package, force: false);
                         success &= (errors == null || !errors.Any());
+                        counter++;
                     }
+
+                    _logger.WriteVerbose("Added {0} packages.", counter);
                 }
                 catch(Exception e)
                 {
@@ -164,6 +163,7 @@ namespace Nuget.PackageIndex
 
                 stopWatch.Stop();
                 _logger.WriteInformation("Finished building index.");
+
 
                 return new LocalPackageIndexBuilderResult
                 {
@@ -205,19 +205,16 @@ namespace Nuget.PackageIndex
             var stopWatch = Stopwatch.StartNew();
 
             IList<PackageIndexError> errors = null;
-            var package = _discoverer.GetPackageMetadataFromPath(nupkgFilePath);
+            var package = _discoverer.GetPackageMetadataFromPath(nupkgFilePath, ShouldInclude);
             if (package != null)
             {
-                if (ShouldInclude(package))
-                {
-                    errors = _index.AddPackage(package, force);                    
-                }
-                else
-                {
-                    _logger.WriteInformation("Excluding package {0} from the indexing.", package.LocalPath);
-                }
+                errors = _index.AddPackage(package, force);
             }
-            
+            else
+            {
+                _logger.WriteInformation("Package {0} either don't exist or is excluded from indexing.", package.LocalPath);
+            }
+
             stopWatch.Stop();
             _logger.WriteInformation("Finished package indexing.");
 

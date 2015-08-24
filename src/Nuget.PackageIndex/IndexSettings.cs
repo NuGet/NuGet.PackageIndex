@@ -127,7 +127,7 @@ namespace Nuget.PackageIndex
             }
         }
 
-        private IEnumerable<string> ReadJsonArray(string nodeName)
+        private IList<string> ReadJsonArray(string nodeName)
         {
             try
             {
@@ -137,7 +137,7 @@ namespace Nuget.PackageIndex
                     var array = settingsJson[nodeName] as JArray;
                     if (array != null)
                     {
-                        return array.Select(x => x.ToString());
+                        return array.Select(x => x.ToString()).ToList();
                     }
                 }
             }
