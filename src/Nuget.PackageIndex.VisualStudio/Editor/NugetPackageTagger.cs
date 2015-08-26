@@ -24,11 +24,18 @@ namespace Nuget.PackageIndex.VisualStudio.Editor
         {
             _analyzerFactory = analyzerFactory;
             _textView = textView;
-            _textView.LayoutChanged += OnLayoutChanged;
+            // TODO Temporary
+           // _textView.LayoutChanged += OnLayoutChanged;
         }
 
         IEnumerable<ITagSpan<NugetPackageTag>> ITagger<NugetPackageTag>.GetTags(NormalizedSnapshotSpanCollection spans)
         {
+            // TODO temporary
+            if (true)
+            {
+                return Enumerable.Empty<ITagSpan<NugetPackageTag>>();
+            }
+
             var projectsMap = new Dictionary<string, IEnumerable<ProjectMetadata>>(StringComparer.OrdinalIgnoreCase);
             var resultTags = new List<ITagSpan<NugetPackageTag>>();
             foreach (var span in spans)

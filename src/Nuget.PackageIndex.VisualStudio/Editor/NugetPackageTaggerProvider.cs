@@ -11,9 +11,10 @@ using Nuget.PackageIndex.Client;
 
 namespace Nuget.PackageIndex.VisualStudio.Editor
 {
-    [Export(typeof(IViewTaggerProvider))]
-    [ContentType("code")]
-    [TagType(typeof(NugetPackageTag))]
+    // TODO Temporary
+    //[Export(typeof(IViewTaggerProvider))]
+    //[ContentType("code")]
+    //[TagType(typeof(NugetPackageTag))]
     internal class NugetPackageTaggerProvider : IViewTaggerProvider
     {
         [Import]
