@@ -45,6 +45,11 @@ namespace Nuget.PackageIndex.VisualStudio
 
         public void Initialize()
         {
+            if (PackageIndexActivityLevelProvider.ActivityLevel > ActivityLevel.On)
+            {
+                return;
+            }
+
             var shouldClean = false;
 
             // if at least one directory where packages live does not exist, 
@@ -98,6 +103,11 @@ namespace Nuget.PackageIndex.VisualStudio
 
         public void Synchronize()
         {
+            if (PackageIndexActivityLevelProvider.ActivityLevel > ActivityLevel.On)
+            {
+                return;
+            }
+
             Synchronize(shouldClean: false, force: false);
         }
 

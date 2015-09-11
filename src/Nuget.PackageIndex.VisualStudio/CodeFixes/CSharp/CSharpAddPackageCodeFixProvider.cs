@@ -70,6 +70,12 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
         {
             get
             {
+                if (PackageIndexActivityLevelProvider.ActivityLevel > ActivityLevel.SuggestionsOnly)
+                {
+                    // if index should be turned complettely off - attach to NO diagnostics 
+                    return ImmutableArray.Create<string>();
+                }
+
                 return ImmutableArray.Create(Analyzer.SyntaxHelper.SupportedDiagnostics);
             }
         }
