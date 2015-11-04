@@ -88,6 +88,10 @@
     <Compile Include="Client\IAddPackageAnalyzer.cs" />
     <Compile Include="Client\AddPackageAnalyzer.cs" />
     <Compile Include="Client\IAddPackageAnalyzerFactory.cs" />
+    <Compile Include="NugetHelpers\FrameworkNames.cs" />
+    <Compile Include="NugetHelpers\SemanticVersionRange.cs" />
+    <Compile Include="NugetHelpers\NugetConstants.cs" />
+    <Compile Include="NugetHelpers\DotNetGenerationMapping.cs" />
     <Compile Include="NugetHelpers\TfmPackageAssemblyMatcher.cs" />
     <Compile Include="NugetHelpers\Asset.cs" />
     <Compile Include="NugetHelpers\PatternExpression.cs" />

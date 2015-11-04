@@ -72,7 +72,7 @@ namespace Nuget.PackageIndex.Client
                 foreach (var projectFramework in projectTargetFrameworks)
                 {
                     var projectFrameworkName = DnxVersionUtility.ParseFrameworkName(projectFramework.TargetFrameworkShortName);
-                    if (DnxVersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
+                    if (packageFrameworkNames.Any(x => DnxVersionUtility.IsCompatible(projectFrameworkName, x)))
                     {
                         // if at least any project target framework supports package - display it
                         return true;

@@ -212,7 +212,7 @@ namespace Nuget.PackageIndex
             }
             else
             {
-                _logger.WriteInformation("Package {0} either don't exist or is excluded from indexing.", package.LocalPath);
+                _logger.WriteInformation("Package {0} either don't exist or is excluded from indexing.", nupkgFilePath);
             }
 
             stopWatch.Stop();

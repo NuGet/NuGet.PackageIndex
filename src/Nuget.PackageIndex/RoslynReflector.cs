@@ -145,6 +145,12 @@ namespace Nuget.PackageIndex
                     {
                         var typeModel = _types[typeFullName];
                         typeModel.MergeTargetFrameworks(assembly.TargetFrameworks);
+
+                        if (!string.IsNullOrEmpty(fullNamespaceName))
+                        {
+                            var namespaceModel = _namespaces[fullNamespaceName];
+                            namespaceModel.MergeTargetFrameworks(assembly.TargetFrameworks);
+                        }
                     }
 
                     // if type is static, then it might contain extension methdos 

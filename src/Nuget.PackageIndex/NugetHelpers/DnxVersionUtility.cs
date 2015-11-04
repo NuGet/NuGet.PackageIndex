@@ -17,14 +17,17 @@ namespace Nuget.PackageIndex.NugetHelpers
 {
     public static class DnxVersionUtility
     {
-        public static readonly string AspNetCoreFrameworkIdentifier = "Asp.NetCore";
         public static readonly string DnxCoreFrameworkIdentifier = "DNXCore";
         public static readonly string PortableFrameworkIdentifier = ".NETPortable";
         public static readonly string NetPlatformFrameworkIdentifier = ".NETPlatform";
         public static readonly string NetCoreFrameworkIdentifier = ".NETCore";
+        public static readonly string UapFrameworkIdentifier = "UAP";
+        public static readonly string WindowsFrameworkIdentifier = "Windows";
+        public static readonly string WindowsPhoneFrameworkIdentifier = "WindowsPhone";
+        public static readonly string WindowsPhoneAppFrameworkIdentifier = "WindowsPhoneApp";
+        public static readonly string SilverlightFrameworkIdentifier = "Silverlight";
 
         internal const string NetFrameworkIdentifier = ".NETFramework";
-        internal const string AspNetFrameworkIdentifier = "Asp.Net";
         internal const string DnxFrameworkIdentifier = "DNX";
         internal const string DnxFrameworkShortName = "dnx";
         internal const string DnxCoreFrameworkShortName = "dnxcore";
@@ -43,7 +46,7 @@ namespace Nuget.PackageIndex.NugetHelpers
 
         private static readonly Dictionary<string, string> _knownProfiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
             { "Client", "Client" },
-            { "WP", "WindowsPhone" },
+            { "WP", WindowsPhoneFrameworkIdentifier },
             { "WP71", "WindowsPhone71" },
             { "CF", "CompactFramework" },
             { "Full", String.Empty }
@@ -54,16 +57,15 @@ namespace Nuget.PackageIndex.NugetHelpers
             { ".NETMicroFramework", "netmf" },
             { DnxFrameworkIdentifier, DnxFrameworkShortName },
             { DnxCoreFrameworkIdentifier, DnxCoreFrameworkShortName },
-            { AspNetFrameworkIdentifier, "aspnet" },
-            { AspNetCoreFrameworkIdentifier, "aspnetcore" },
             { NetPlatformFrameworkIdentifier, NetPlatformFrameworkShortName },
+            { UapFrameworkIdentifier, UapFrameworkIdentifier },
 
-            { "Silverlight", "sl" },
-            { ".NETCore", "win"},
-            { "Windows", "win"},
-            { ".NETPortable", "portable" },
-            { "WindowsPhone", "wp"},
-            { "WindowsPhoneApp", "wpa"}
+            { SilverlightFrameworkIdentifier, "sl" },
+            { NetCoreFrameworkIdentifier, "netcore"},
+            { WindowsFrameworkIdentifier, "win"},
+            { PortableFrameworkIdentifier, "portable" },
+            { WindowsPhoneFrameworkIdentifier, "wp"},
+            { WindowsPhoneAppFrameworkIdentifier, "wpa"}
         };
 
         private static readonly Dictionary<string, string> _identifierToProfileFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
@@ -92,7 +94,6 @@ namespace Nuget.PackageIndex.NugetHelpers
         {
             return
                 string.Equals(framework.Identifier, DnxCoreFrameworkIdentifier, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(framework.Identifier, AspNetCoreFrameworkIdentifier, StringComparison.OrdinalIgnoreCase) ||
                 (string.Equals(framework.Identifier, NetCoreFrameworkIdentifier, StringComparison.OrdinalIgnoreCase) && framework.Version >= _version5);
         }
 
@@ -110,31 +111,10 @@ namespace Nuget.PackageIndex.NugetHelpers
             { new FrameworkName("Windows, Version=v8.1"), new FrameworkName(".NETCore, Version=v4.5.1") }
         };
 
-        private static readonly Version MaxVersion = new Version(Int32.MaxValue, Int32.MaxValue, Int32.MaxValue, Int32.MaxValue);
-
-        public static Version DefaultTargetFrameworkVersion
-        {
-            get
-            {
-                // We need to parse the version name out from the mscorlib's assembly name since
-                // we can't call GetName() in medium trust
-                return typeof(string).GetTypeInfo().Assembly.GetName().Version;
-            }
-        }
-
-        public static FrameworkName DefaultTargetFramework
-        {
-            get
-            {
-                return new FrameworkName(NetFrameworkIdentifier, DefaultTargetFrameworkVersion);
-            }
-        }
-
         // This method must be kep in sync with CompilerOptionsExtensions.IsDesktop
         public static bool IsDesktop(FrameworkName frameworkName)
         {
             return frameworkName.Identifier == NetFrameworkIdentifier ||
-                   frameworkName.Identifier == AspNetFrameworkIdentifier ||
                    frameworkName.Identifier == DnxFrameworkIdentifier;
         }
 
@@ -149,6 +129,22 @@ namespace Nuget.PackageIndex.NugetHelpers
                 throw new ArgumentNullException(nameof(frameworkName));
             }
 
+            // TODO: Intern these frameworks
+            // Fast path for runtime code path, these 3 short names are the runnable tfms
+            // We fall back to regular parsing in other scenarios (build/dth)
+            if (frameworkName == FrameworkNames.ShortNames.Dnx451)
+            {
+                return new FrameworkName(FrameworkNames.LongNames.Dnx, new Version(4, 5, 1));
+            }
+            else if (frameworkName == FrameworkNames.ShortNames.Dnx46)
+            {
+                return new FrameworkName(FrameworkNames.LongNames.Dnx, new Version(4, 6));
+            }
+            else if (frameworkName == FrameworkNames.ShortNames.DnxCore50)
+            {
+                return new FrameworkName(FrameworkNames.LongNames.DnxCore, new Version(5, 0));
+            }
+
             // {Identifier}{Version}-{Profile}
 
             // Split the framework name into 3 parts, identifier, version and profile.
@@ -159,7 +155,7 @@ namespace Nuget.PackageIndex.NugetHelpers
 
             if (parts.Length > 2)
             {
-                throw new ArgumentException(nameof(frameworkName));
+                throw new ArgumentException("Framework name had incorrect format.", nameof(frameworkName));
             }
 
             string frameworkNameAndVersion = parts.Length > 0 ? parts[0].Trim() : null;
@@ -167,7 +163,7 @@ namespace Nuget.PackageIndex.NugetHelpers
 
             if (String.IsNullOrEmpty(frameworkNameAndVersion))
             {
-                throw new ArgumentException(nameof(frameworkName));
+                throw new ArgumentException("Framework name can not be empty.", nameof(frameworkName));
             }
 
             // If we find a version then we try to split the framework name into 2 parts
@@ -257,23 +253,23 @@ namespace Nuget.PackageIndex.NugetHelpers
         {
             if (String.IsNullOrEmpty(profilePart))
             {
-                throw new ArgumentException(nameof(profilePart));
+                throw new ArgumentException("Portable framework profile is empty.", nameof(profilePart));
             }
 
             if (profilePart.Contains('-'))
             {
-                throw new ArgumentException(nameof(profilePart));
+                throw new ArgumentException("Portable framework profile has dash.", nameof(profilePart));
             }
 
             if (profilePart.Contains(' '))
             {
-                throw new ArgumentException(nameof(profilePart));
+                throw new ArgumentException("Portable framework profile has spaces.", nameof(profilePart));
             }
 
             string[] parts = profilePart.Split('+');
             if (parts.Any(p => String.IsNullOrEmpty(p)))
             {
-                throw new ArgumentException(nameof(profilePart));
+                throw new ArgumentException("Portable framework profile component is empty.", nameof(profilePart));
             }
 
             // Prevent portable framework inside a portable framework - Inception
@@ -281,30 +277,27 @@ namespace Nuget.PackageIndex.NugetHelpers
                 parts.Any(p => p.StartsWith("NETPortable", StringComparison.OrdinalIgnoreCase)) ||
                 parts.Any(p => p.StartsWith(".NETPortable", StringComparison.OrdinalIgnoreCase)))
             {
-                throw new ArgumentException(nameof(profilePart));
+                throw new ArgumentException("Portable framework profile component is portable.", nameof(profilePart));
             }
         }
 
-        /// <summary>
-        /// Trims trailing zeros in revision and build.
-        /// </summary>
-        public static Version TrimVersion(Version version)
+        public static SemanticVersionRange ParseVersionRange(string value)
         {
-            if (version == null)
+            var floatBehavior = SemanticVersionFloatBehavior.None;
+
+            // Support snapshot versions
+            if (value.EndsWith("-*"))
             {
-                throw new ArgumentNullException(nameof(version));
+                floatBehavior = SemanticVersionFloatBehavior.Prerelease;
+                value = value.Substring(0, value.Length - 2);
             }
 
-            if (version.Build == 0 && version.Revision == 0)
-            {
-                version = new Version(version.Major, version.Minor);
-            }
-            else if (version.Revision == 0)
-            {
-                version = new Version(version.Major, version.Minor, version.Build);
-            }
+            var spec = ParseVersionSpec(value);
 
-            return version;
+            return new SemanticVersionRange(spec)
+            {
+                VersionFloatBehavior = floatBehavior
+            };
         }
 
         /// <summary>
@@ -323,13 +316,14 @@ namespace Nuget.PackageIndex.NugetHelpers
             IVersionSpec versionInfo;
             if (!TryParseVersionSpec(value, out versionInfo))
             {
-                throw new ArgumentException(value);
+                throw new ArgumentException(
+                    String.Format(CultureInfo.CurrentCulture, "Invalid version string: '{0}'", value));
             }
 
             return versionInfo;
         }
 
-        public static bool TryParseVersionSpec(string value, out IVersionSpec result)
+        private static bool TryParseVersionSpec(string value, out IVersionSpec result)
         {
             if (value == null)
             {
@@ -433,20 +427,7 @@ namespace Nuget.PackageIndex.NugetHelpers
             return true;
         }
 
-        /// <summary>
-        /// The safe range is defined as the highest build and revision for a given major and minor version
-        /// </summary>
-        public static IVersionSpec GetSafeRange(SemanticVersion version)
-        {
-            return new VersionSpec
-            {
-                IsMinInclusive = true,
-                MinVersion = version,
-                MaxVersion = new SemanticVersion(new Version(version.Version.Major, version.Version.Minor + 1))
-            };
-        }
-
-        public static string PrettyPrint(IVersionSpec versionSpec)
+        internal static string PrettyPrint(IVersionSpec versionSpec)
         {
             if (versionSpec.MinVersion != null && versionSpec.IsMinInclusive && versionSpec.MaxVersion == null && !versionSpec.IsMaxInclusive)
             {
@@ -557,10 +538,20 @@ namespace Nuget.PackageIndex.NugetHelpers
                 // only show version part if it's > 0.0.0.0
                 if (frameworkName.Version > new Version(0, 0))
                 {
-                    // Remove the . from versions
-                    name += frameworkName.Version.ToString().Replace(".", String.Empty);
+                    // Remove the . from versions, unless:
+                    //  a) Any version part is greater than 9
+                    //  b) The identifier is .NETPlatform
+                    var version = frameworkName.Version.ToString();
+                    if (!frameworkName.Identifier.Equals(NetPlatformFrameworkIdentifier) &&
+                        frameworkName.Version.Major < 10 &&
+                        frameworkName.Version.Minor < 10 &&
+                        frameworkName.Version.Build < 10 &&
+                        frameworkName.Version.Revision < 10)
+                    {
+                        version = version.Replace(".", string.Empty);
+                    }
+                    name += version;
                 }
-
                 if (String.IsNullOrEmpty(frameworkName.Profile))
                 {
                     return name;
@@ -615,12 +606,6 @@ namespace Nuget.PackageIndex.NugetHelpers
             return null;
         }
 
-        public static FrameworkName ParseFrameworkFolderName(string path)
-        {
-            string effectivePath;
-            return ParseFrameworkFolderName(path, strictParsing: true, effectivePath: out effectivePath);
-        }
-
         /// <summary>
         /// Parses the specified string into FrameworkName object.
         /// </summary>
@@ -628,14 +613,14 @@ namespace Nuget.PackageIndex.NugetHelpers
         /// <param name="strictParsing">if set to <c>true</c>, parse the first folder of path even if it is unrecognized framework.</param>
         /// <param name="effectivePath">returns the path after the parsed target framework</param>
         /// <returns></returns>
-        public static FrameworkName ParseFrameworkFolderName(string path, bool strictParsing, out string effectivePath)
+        private static FrameworkName ParseFrameworkFolderName(string path, bool strictParsing, out string effectivePath)
         {
-            // The path for a reference might look like this for assembly bar.dll:
-            // bar.dll
-            // sub\bar.dll
-            // {FrameworkName}{Version}\bar.dll
-            // {FrameworkName}{Version}\sub1\bar.dll
-            // {FrameworkName}{Version}\sub1\sub2\bar.dll
+            // The path for a reference might look like this for assembly foo.dll:
+            // foo.dll
+            // sub\foo.dll
+            // {FrameworkName}{Version}\foo.dll
+            // {FrameworkName}{Version}\sub1\foo.dll
+            // {FrameworkName}{Version}\sub1\sub2\foo.dll
 
             // Get the target framework string if specified
             string targetFrameworkString = Path.GetDirectoryName(path).Split(Path.DirectorySeparatorChar).First();
@@ -700,17 +685,22 @@ namespace Nuget.PackageIndex.NugetHelpers
             // Group references by target framework (if there is no target framework we assume it is the default)
             var frameworkGroups = normalizedItems.GroupBy(g => g.TargetFramework, g => g.Item).ToList();
 
-            // Find exact matching items in expansion order.
-            foreach (var activeFramework in Expand(internalProjectFramework))
+            if (!projectFramework.IsPortableFramework())
             {
-                var matchingGroups = frameworkGroups.Where(g => string.Equals(g.Key?.Identifier, activeFramework.Identifier, StringComparison.OrdinalIgnoreCase)).ToList();
-                var bestGroup = matchingGroups
-                    .OrderByDescending(f => f.Key.Version)
-                    .FirstOrDefault(g => g.Key.Version <= activeFramework.Version);
-                if (bestGroup != null)
+                // Find exact matching items in expansion order.
+                foreach (var activeFramework in DotNetGenerationMapping.Expand(internalProjectFramework))
                 {
-                    compatibleItems = bestGroup;
-                    return true;
+                    var matchingGroups = frameworkGroups.Where(g =>
+                        string.Equals(g.Key?.Identifier, activeFramework.Identifier, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(g.Key?.Profile, activeFramework.Profile, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var bestGroup = matchingGroups
+                        .OrderByDescending(f => f.Key.Version)
+                        .FirstOrDefault(g => g.Key.Version <= activeFramework.Version);
+                    if (bestGroup != null)
+                    {
+                        compatibleItems = bestGroup;
+                        return true;
+                    }
                 }
             }
 
@@ -718,7 +708,7 @@ namespace Nuget.PackageIndex.NugetHelpers
             return TryGetCompatibleItemsCore(out compatibleItems, internalProjectFramework, frameworkGroups);
         }
 
-        public static bool TryGetCompatibleItems<T>(FrameworkName projectFramework, IEnumerable<T> items, out IEnumerable<T> compatibleItems) where T : IFrameworkTargetable
+        private static bool TryGetCompatibleItems<T>(FrameworkName projectFramework, IEnumerable<T> items, out IEnumerable<T> compatibleItems) where T : IFrameworkTargetable
         {
             if (!items.Any())
             {
@@ -793,38 +783,6 @@ namespace Nuget.PackageIndex.NugetHelpers
         }
 
         /// <summary>
-        /// Returns all possible versions for a version. i.e. 1.0 would return 1.0, 1.0.0, 1.0.0.0
-        /// </summary>
-        internal static IEnumerable<SemanticVersion> GetPossibleVersions(SemanticVersion semVer)
-        {
-            // Trim the version so things like 1.0.0.0 end up being 1.0
-            Version version = TrimVersion(semVer.Version);
-
-            yield return new SemanticVersion(version, semVer.SpecialVersion);
-
-            if (version.Build == -1 && version.Revision == -1)
-            {
-                yield return new SemanticVersion(new Version(version.Major, version.Minor, 0), semVer.SpecialVersion);
-                yield return new SemanticVersion(new Version(version.Major, version.Minor, 0, 0), semVer.SpecialVersion);
-            }
-            else if (version.Revision == -1)
-            {
-                yield return new SemanticVersion(new Version(version.Major, version.Minor, version.Build, 0), semVer.SpecialVersion);
-            }
-        }
-
-        public static bool IsCompatible(FrameworkName frameworkName, IEnumerable<FrameworkName> supportedFrameworks)
-        {
-            if (supportedFrameworks.Any())
-            {
-                return supportedFrameworks.Any(supportedFramework => IsCompatible(frameworkName, supportedFramework));
-            }
-
-            // No supported frameworks means that everything is supported.
-            return true;
-        }
-
-        /// <summary>
         /// Determines if a package's target framework can be installed into a project's framework.
         /// </summary>
         /// <param name="frameworkName">The project's framework</param>
@@ -845,7 +803,7 @@ namespace Nuget.PackageIndex.NugetHelpers
             targetFrameworkName = NormalizeFrameworkName(targetFrameworkName);
             frameworkName = NormalizeFrameworkName(frameworkName);
 
-            frameworkName = Expand(frameworkName)
+            frameworkName = DotNetGenerationMapping.Expand(frameworkName)
                 .FirstOrDefault(fx => String.Equals(fx.Identifier, targetFrameworkName.Identifier, StringComparison.OrdinalIgnoreCase));
             if (frameworkName == null)
             {
@@ -878,54 +836,6 @@ namespace Nuget.PackageIndex.NugetHelpers
             }
 
             return false;
-        }
-
-        private static IEnumerable<FrameworkName> Expand(FrameworkName input)
-        {
-            // Try to convert the project framework into an equivalent target framework
-            // If the identifiers didn't match, we need to see if this framework has an equivalent framework that DOES match.
-            // If it does, we use that from here on.
-            // Example:
-            //  If the Project Targets ASP.Net, Version=5.0. It can accept Packages targetting .NETFramework, Version=4.5.1
-            //  so since the identifiers don't match, we need to "translate" the project target framework to .NETFramework
-            //  however, we still want direct ASP.Net == ASP.Net matches, so we do this ONLY if the identifiers don't already match
-
-            yield return input;
-
-            // dnxcoreN -> aspnetcoreN -> dotnetN
-            if (input.Identifier.Equals(DnxCoreFrameworkIdentifier))
-            {
-                yield return new FrameworkName(AspNetCoreFrameworkIdentifier, input.Version);
-                yield return new FrameworkName(NetPlatformFrameworkIdentifier, input.Version);
-            }
-            // aspnetcoreN -> dotnetN
-            else if (input.Identifier.Equals(AspNetCoreFrameworkIdentifier))
-            {
-                yield return new FrameworkName(NetPlatformFrameworkIdentifier, input.Version);
-            }
-            // dnxN -> aspnet50 -> netN
-            else if (input.Identifier.Equals(DnxFrameworkIdentifier))
-            {
-                yield return new FrameworkName(AspNetFrameworkIdentifier, new Version(5, 0));
-                yield return new FrameworkName(NetFrameworkIdentifier, input.Version);
-                yield return new FrameworkName(NetPlatformFrameworkIdentifier, new Version(5, 0));
-            }
-            // aspnet50 -> net46 (project framework; this is DEPRECATED, so setting a max version is OK)
-            else if (input.Identifier.Equals(AspNetFrameworkIdentifier))
-            {
-                yield return new FrameworkName(NetFrameworkIdentifier, new Version(4, 6));
-                yield return new FrameworkName(NetPlatformFrameworkIdentifier, new Version(5, 0));
-            }
-            // netcore50 (universal windows apps) -> dotnet50
-            else if (input.Identifier.Equals(NetCoreFrameworkIdentifier) && input.Version.Major == 5 && input.Version.Minor == 0)
-            {
-                yield return new FrameworkName(NetPlatformFrameworkIdentifier, new Version(5, 0));
-            }
-            // net45 -> dotnet
-            else if (input.Identifier.Equals(NetFrameworkIdentifier) && input.Version >= new Version(4, 5))
-            {
-                yield return new FrameworkName(NetPlatformFrameworkIdentifier, new Version(5, 0));
-            }
         }
 
         private static bool IsPortableLibraryCompatible(FrameworkName frameworkName, FrameworkName targetFrameworkName)
@@ -966,9 +876,8 @@ namespace Nuget.PackageIndex.NugetHelpers
                 {
                     // TODO: Remove this logic when out dependencies have moved to ASP.NET Core 5.0
                     // as this logic is super fuzzy and terrible
-                    if (string.Equals(frameworkName.Identifier, AspNetCoreFrameworkIdentifier, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(frameworkName.Identifier, DnxCoreFrameworkIdentifier, StringComparison.OrdinalIgnoreCase) ||
-                        (string.Equals(frameworkName.Identifier, NetPlatformFrameworkIdentifier, StringComparison.OrdinalIgnoreCase)))
+                    if (string.Equals(frameworkName.Identifier, DnxCoreFrameworkIdentifier, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(frameworkName.Identifier, NetPlatformFrameworkIdentifier, StringComparison.OrdinalIgnoreCase))
                     {
                         var frameworkIdentifierLookup = targetFrameworkPortableProfile.SupportedFrameworks
                                                                                       .Select(NormalizeFrameworkName)
@@ -1189,17 +1098,74 @@ namespace Nuget.PackageIndex.NugetHelpers
                 PortableFrameworkIdentifier.Equals(framework.Identifier, StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool ShouldUseConsidering(
+            SemanticVersion current,
+            SemanticVersion considering,
+            SemanticVersionRange ideal)
+        {
+            if (considering == null)
+            {
+                // skip nulls
+                return false;
+            }
+
+            if (!ideal.EqualsFloating(considering) && considering < ideal.MinVersion)
+            {
+                // Don't use anything that can't be satisfied
+                return false;
+            }
+
+            if (ideal.MaxVersion != null)
+            {
+                if (ideal.IsMaxInclusive && considering > ideal.MaxVersion)
+                {
+                    return false;
+                }
+                else if (ideal.IsMaxInclusive == false && considering >= ideal.MaxVersion)
+                {
+                    return false;
+                }
+            }
+
+            /*
+            Come back to this later
+            if (ideal.VersionFloatBehavior == SemanticVersionFloatBehavior.None &&
+                considering != ideal.MinVersion)
+            {
+                return false;
+            }
+            */
+
+            if (current == null)
+            {
+                // always use version when it's the first valid
+                return true;
+            }
+
+            if (ideal.EqualsFloating(current) &&
+                ideal.EqualsFloating(considering))
+            {
+                // favor higher version when they both match a floating pattern
+                return current < considering;
+            }
+
+            // Favor lower versions
+            return current > considering;
+        }
+
+        internal static SemanticVersion GetAssemblyVersion(string path)
+        {
+            return new SemanticVersion(AssemblyName.GetAssemblyName(path).Version);
+        }
+
         private static IDictionary<string, string> PopulateKnownFrameworks()
         {
             var frameworks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
                 { DnxFrameworkShortName, DnxFrameworkIdentifier },
                 { DnxCoreFrameworkShortName, DnxCoreFrameworkIdentifier },
-                { "aspnet", AspNetFrameworkIdentifier },
-                { "asp.net", AspNetFrameworkIdentifier },
-                { "aspnetcore", AspNetCoreFrameworkIdentifier },
-                { "asp.netcore", AspNetCoreFrameworkIdentifier },
                 { NetPlatformFrameworkShortName, NetPlatformFrameworkIdentifier },
                 { NetPlatformFrameworkIdentifier, NetPlatformFrameworkIdentifier },
+                { UapFrameworkIdentifier, UapFrameworkIdentifier },
 
                 { "NET", NetFrameworkIdentifier },
 
@@ -1216,17 +1182,16 @@ namespace Nuget.PackageIndex.NugetHelpers
                 { ".NETPortable", PortableFrameworkIdentifier },
                 { "NETPortable", PortableFrameworkIdentifier },
                 { "portable", PortableFrameworkIdentifier },
-                { "wp", "WindowsPhone" },
-                { "WindowsPhone", "WindowsPhone" },
-                { "Windows", "Windows" },
-                { "win", "Windows" },
+                { "wp", WindowsPhoneFrameworkIdentifier },
+                { "WindowsPhone", WindowsPhoneFrameworkIdentifier },
+                { "Windows", WindowsFrameworkIdentifier },
+                { "win", WindowsFrameworkIdentifier },
                 { "MonoAndroid", "MonoAndroid" },
                 { "MonoTouch", "MonoTouch" },
                 { "MonoMac", "MonoMac" },
                 { "native", "native"},
-                { "WindowsPhoneApp", "WindowsPhoneApp"},
-                { "wpa", "WindowsPhoneApp"},
-                { "k", "K" }
+                { "WindowsPhoneApp", WindowsPhoneAppFrameworkIdentifier },
+                { "wpa", WindowsPhoneAppFrameworkIdentifier }
             };
 
             return frameworks;

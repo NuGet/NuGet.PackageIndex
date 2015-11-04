@@ -71,7 +71,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                                         foreach (var projectFrameworkMetadata in project.TargetFrameworks)
                                         {
                                             var projectFrameworkName = DnxVersionUtility.ParseFrameworkName(projectFrameworkMetadata.TargetFrameworkShortName);
-                                            if (projectFrameworkName != null && DnxVersionUtility.IsCompatible(projectFrameworkName, packageFrameworkNames))
+                                            if (projectFrameworkName != null && packageFrameworkNames.Any(x => DnxVersionUtility.IsCompatible(projectFrameworkName, x)))
                                             {
                                                 frameworksToInstall.Add(projectFrameworkName);
                                             }
