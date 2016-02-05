@@ -28,7 +28,8 @@ namespace Nuget.PackageIndex
             {
                 @"%ProgramFiles(x86)%\Microsoft Web Tools\DNU",
                 @"%ProgramFiles(x86)%\Microsoft Web Tools\Packages",
-                @"%UserProfile%\.dnx\packages"
+                @"%UserProfile%\.dnx\packages",
+                @"%UserProfile%\.nuget\packages"
             };
 
         private List<string> _packageSources;
