@@ -26,6 +26,7 @@ namespace Nuget.PackageIndex
         private const string PackageSourcesEnvironmentVariable = "NugetLocalPackageSources";
         private List<string> DefaultSources = new List<string>()
             {
+                @"%ProgramData%\NuGetPackages",
                 @"%ProgramFiles(x86)%\Microsoft Web Tools\DNU",
                 @"%ProgramFiles(x86)%\Microsoft Web Tools\Packages",
                 @"%UserProfile%\.dnx\packages",
