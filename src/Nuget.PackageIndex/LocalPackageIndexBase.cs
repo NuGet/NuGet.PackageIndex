@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
-using NuGet;
 using Lucene.Net.Analysis;
 using Lucene.Net.Search;
 using Lucene.Net.Index;
@@ -15,6 +14,8 @@ using Nuget.PackageIndex.Engine;
 using Nuget.PackageIndex.Models;
 using Nuget.PackageIndex.Logging;
 using TypeInfo = Nuget.PackageIndex.Models.TypeInfo;
+using NuGet.Versioning;
+using NuGet.Packaging;
 
 namespace Nuget.PackageIndex
 {
@@ -127,8 +128,8 @@ namespace Nuget.PackageIndex
                 var existingPackage = GetPackages(package.Id).FirstOrDefault();
                 if (existingPackage != null)
                 {
-                    var existingPackageVersion = new SemanticVersion(existingPackage.Version);
-                    var newPackageVersion = new SemanticVersion(package.Version);
+                    var existingPackageVersion = new NuGetVersion(existingPackage.Version);
+                    var newPackageVersion = new NuGetVersion(package.Version);
                     if (existingPackageVersion >= newPackageVersion && !force)
                     {
                         Logger.WriteVerbose("More recent version {0} of package {1} {2} exists in the index. Skipping...", existingPackageVersion.ToString(), package.Id, package.Version);

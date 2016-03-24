@@ -127,10 +127,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\Microsoft.VisualStudio.Threading.dll</HintPath>
     </Reference>
-    <Reference Include="NuGet.Core, Version=2.8.60314.59, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\references\NuGet.Core.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />

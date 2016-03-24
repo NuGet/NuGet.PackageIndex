@@ -60,9 +60,32 @@
       <HintPath>..\..\packages\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NuGet.Core, Version=2.8.50926.602, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\references\NuGet.Core.dll</HintPath>
+    <Reference Include="NuGet.Client">
+      <HintPath>..\..\references\NuGet.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.ContentModel">
+      <HintPath>..\..\references\NuGet.ContentModel.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.Frameworks">
+      <HintPath>..\..\references\NuGet.Frameworks.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.Packaging">
+      <HintPath>..\..\references\NuGet.Packaging.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.Packaging.Core">
+      <HintPath>..\..\references\NuGet.Packaging.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.Packaging.Core.Types">
+      <HintPath>..\..\references\NuGet.Packaging.Core.Types.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.Repositories">
+      <HintPath>..\..\references\NuGet.Repositories.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.RuntimeModel">
+      <HintPath>..\..\references\NuGet.RuntimeModel.dll</HintPath>
+    </Reference>
+    <Reference Include="NuGet.Versioning">
+      <HintPath>..\..\references\NuGet.Versioning.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Collections.Immutable, Version=1.1.33.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -70,6 +93,7 @@
       <HintPath>..\..\references\System.Collections.Immutable.dll</HintPath>
     </Reference>
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Reflection.Metadata, Version=1.0.18.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\references\System.Reflection.Metadata.dll</HintPath>
@@ -88,23 +112,6 @@
     <Compile Include="Client\IAddPackageAnalyzer.cs" />
     <Compile Include="Client\AddPackageAnalyzer.cs" />
     <Compile Include="Client\IAddPackageAnalyzerFactory.cs" />
-    <Compile Include="NugetHelpers\FrameworkNames.cs" />
-    <Compile Include="NugetHelpers\SemanticVersionRange.cs" />
-    <Compile Include="NugetHelpers\NugetConstants.cs" />
-    <Compile Include="NugetHelpers\DotNetGenerationMapping.cs" />
-    <Compile Include="NugetHelpers\TfmPackageAssemblyMatcher.cs" />
-    <Compile Include="NugetHelpers\Asset.cs" />
-    <Compile Include="NugetHelpers\PatternExpression.cs" />
-    <Compile Include="NugetHelpers\ContentItem.cs" />
-    <Compile Include="NugetHelpers\ContentItemGroup.cs" />
-    <Compile Include="NugetHelpers\ContentItemCollection.cs" />
-    <Compile Include="NugetHelpers\ContentPropertyDefinition.cs" />
-    <Compile Include="NugetHelpers\ContentPatternDefinition.cs" />
-    <Compile Include="NugetHelpers\PropertyDefinitions.cs" />
-    <Compile Include="NugetHelpers\SelectionCriteria.cs" />
-    <Compile Include="NugetHelpers\SelectionCriteriaBuilder.cs" />
-    <Compile Include="NugetHelpers\PatternDefinitions.cs" />
-    <Compile Include="NugetHelpers\DnxVersionUtility.cs" />
     <Compile Include="Client\StringExtensions.cs" />
     <Compile Include="Client\ISyntaxHelper.cs" />
     <Compile Include="Client\IProjectMetadataProvider.cs" />
@@ -123,7 +130,6 @@
     <Compile Include="Engine\PackageSearchEngine.cs" />
     <Compile Include="Models\IPackageIndexModelInfo.cs" />
     <Compile Include="Models\ModelBase.cs" />
-    <Compile Include="NugetHelpers\FrameworkNameEqualityComparer.cs" />
     <Compile Include="NupkgLocalPackageLoader.cs" />
     <Compile Include="IPackageMetadata.cs" />
     <Compile Include="ILocalPackageLoader.cs" />

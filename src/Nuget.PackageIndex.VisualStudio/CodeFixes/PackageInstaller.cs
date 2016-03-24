@@ -15,7 +15,6 @@ using Nuget.PackageIndex.Client;
 using Nuget.PackageIndex.Models;
 using Document = Microsoft.CodeAnalysis.Document;
 using Task = System.Threading.Tasks.Task;
-using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex.VisualStudio.CodeFixes
 {
@@ -66,14 +65,12 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes
                                     delegate 
                                     {
                                         var frameworksToInstall = new List<FrameworkName>();
-                                        var packageFrameworkNames = packageInfo.TargetFrameworks.Select(x => DnxVersionUtility.ParseFrameworkName(x))
-                                                                                                .ToList();
                                         foreach (var projectFrameworkMetadata in project.TargetFrameworks)
                                         {
-                                            var projectFrameworkName = DnxVersionUtility.ParseFrameworkName(projectFrameworkMetadata.TargetFrameworkShortName);
-                                            if (projectFrameworkName != null && packageFrameworkNames.Any(x => DnxVersionUtility.IsCompatible(projectFrameworkName, x)))
+                                            var projectFrameworkName = projectFrameworkMetadata.TargetFrameworkShortName;
+                                            if (projectFrameworkName != null && TargetFrameworkHelper.AreCompatible(projectFrameworkName, packageInfo.TargetFrameworks))
                                             {
-                                                frameworksToInstall.Add(projectFrameworkName);
+                                                frameworksToInstall.Add(TargetFrameworkHelper.GetFrameworkName(projectFrameworkName));
                                             }
                                         }
 

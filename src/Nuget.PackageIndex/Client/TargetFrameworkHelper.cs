@@ -4,17 +4,50 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using NuGet;
 using Nuget.PackageIndex.Models;
-using Nuget.PackageIndex.NugetHelpers;
+using NuGet.Frameworks;
+using System.Runtime.Versioning;
+using NuGet.Versioning;
 
 namespace Nuget.PackageIndex.Client
 {
     /// <summary>
     /// Contains helper methods for operations with packages and target frameworks
     /// </summary>
-    internal static class TargetFrameworkHelper
+    public static class TargetFrameworkHelper
     {
+        private static NuGetFramework ParseFrameworkName(string framework)
+        {
+            return NuGetFramework.Parse(framework);
+        }
+
+        private static bool AreCompatible(NuGetFramework projectFramework, NuGetFramework packageFramework)
+        {
+            var reducer = new FrameworkReducer();
+            var nearest = reducer.GetNearest(projectFramework, new[] { packageFramework });
+            return nearest != null;
+        }
+
+        public static bool AreCompatible(string projectFramework, string packageFramework)
+        {
+            return AreCompatible(ParseFrameworkName(projectFramework), ParseFrameworkName(packageFramework));
+        }
+
+        public static bool AreCompatible(string projectFramework, IEnumerable<string> packageFramework)
+        {
+            var nugetPackageFrameworks = packageFramework.Select(x => ParseFrameworkName(x));
+            var reducer = new FrameworkReducer();
+            var nearest = reducer.GetNearest(ParseFrameworkName(projectFramework), nugetPackageFrameworks);
+            return nearest != null;
+        }
+
+        public static FrameworkName GetFrameworkName(string framework)
+        {
+            var nugetFramework = ParseFrameworkName(framework);
+
+            return new FrameworkName(nugetFramework.DotNetFrameworkName);
+        }
+
         /// <summary>
         /// Returns all packages that support given list of target frameworks.
         /// Note: if projectTargetFrameworks is null or empty list it means that project type
@@ -68,11 +101,11 @@ namespace Nuget.PackageIndex.Client
             }
             else
             {
-                var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => DnxVersionUtility.ParseFrameworkName(x)).ToList();
+                var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => ParseFrameworkName(x)).ToList();
                 foreach (var projectFramework in projectTargetFrameworks)
                 {
-                    var projectFrameworkName = DnxVersionUtility.ParseFrameworkName(projectFramework.TargetFrameworkShortName);
-                    if (packageFrameworkNames.Any(x => DnxVersionUtility.IsCompatible(projectFrameworkName, x)))
+                    var projectFrameworkName = ParseFrameworkName(projectFramework.TargetFrameworkShortName);                    
+                    if (packageFrameworkNames.Any(x => AreCompatible(projectFrameworkName, x)))
                     {
                         // if at least any project target framework supports package - display it
                         return true;
@@ -113,10 +146,10 @@ namespace Nuget.PackageIndex.Client
         {
             if (allowHigherVersions)
             {
-                var packageVersion = new SemanticVersion(packageInfo.PackageVersion);
+                var packageVersion = new NuGetVersion(packageInfo.PackageVersion);
                 return projectTargetFrameworks.Any(x => x.Packages.Any(p =>
                         {
-                            var projecsPackageVersion = new SemanticVersion(p.Value);
+                            var projecsPackageVersion = new NuGetVersion(p.Value);
                             // if project has package with given name and version less than in index
                             return p.Key.Equals(packageInfo.PackageName) && projecsPackageVersion <= packageVersion;
                         }

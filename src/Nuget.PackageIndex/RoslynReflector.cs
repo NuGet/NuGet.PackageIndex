@@ -18,6 +18,8 @@ namespace Nuget.PackageIndex
     /// </summary>
     internal class RoslynReflector : IReflector
     {
+        private readonly Abstractions.INugetHelper _nugetHelper;
+
         private Dictionary<string, TypeModel> _types;
         public IEnumerable<TypeModel> Types
         {
@@ -46,11 +48,17 @@ namespace Nuget.PackageIndex
         private readonly IPackageMetadata _package;
 
         public RoslynReflector(IPackageMetadata package)
+            :this(package, new Abstractions.NugetHelper())
+        {
+        }
+
+        internal RoslynReflector(IPackageMetadata package, Abstractions.INugetHelper nugetHelper)
         {
             _types = new Dictionary<string, TypeModel>();
             _namespaces = new Dictionary<string, NamespaceModel>();
             _extensions = new Dictionary<string, ExtensionModel>();
             _package = package;
+            _nugetHelper = nugetHelper;
         }
 
         /// <summary>
@@ -61,7 +69,7 @@ namespace Nuget.PackageIndex
         {
             try
             {
-                var metadata = MetadataReference.CreateFromFile(assembly.FullPath);
+                var metadata = MetadataReference.CreateFromStream(_nugetHelper.GetStream(assembly.Package, assembly.FullPath));
 
                 // create an empty CSharp compillation and add a single reference to given assembly.
                 // Note: Even though we do use CSharp compillation here, we only se it to retrieve 

@@ -1,21 +1,50 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using NuGet;
+using NuGet.Packaging;
+using NuGet.Repositories;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Nuget.PackageIndex.Abstractions
 {
     public class NugetHelper : INugetHelper
     {
-        public IPackage OpenPackage(string packagePath, Func<string, IPackage> action)
+        public IEnumerable<string> GetPackageFiles(LocalPackageInfo package)
         {
-            if (string.IsNullOrEmpty(packagePath) || action == null)
+            IList<string> files = null;
+            using (var packageReader = new PackageArchiveReader(package.ZipPath))
             {
-                return null;
+                if (Path.DirectorySeparatorChar != '/')
+                {
+                    files = packageReader
+                        .GetFiles()
+                        .Select(p => p.Replace(Path.DirectorySeparatorChar, '/'))
+                        .ToList();
+                }
+                else
+                {
+                    files = packageReader
+                        .GetFiles()
+                        .ToList();
+                }
             }
 
-            return action.Invoke(packagePath);
-        }        
+            return files;
+        }
+
+        public Stream GetStream(LocalPackageInfo package, string path)
+        {
+            var result = new MemoryStream();
+            using (var packageReader = new PackageArchiveReader(package.ZipPath))
+            {
+                using (var stream = packageReader.GetStream(path))
+                {
+                    stream.CopyTo(result);
+                    return result;
+                }
+            }
+        }
     }
 }

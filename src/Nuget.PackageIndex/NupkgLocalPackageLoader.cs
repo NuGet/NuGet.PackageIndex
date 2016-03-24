@@ -1,14 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using NuGet.Client;
+using NuGet.Frameworks;
+using NuGet.Repositories;
+using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Runtime.Versioning;
-using Nuget.PackageIndex.NugetHelpers;
 
 namespace Nuget.PackageIndex
 {
@@ -53,26 +55,56 @@ namespace Nuget.PackageIndex
             }
         }
 
+        private LocalPackageInfo GetPackageInfo(string nuspecFilePath)
+        {
+            if (string.IsNullOrEmpty(nuspecFilePath))
+            {
+                return null;
+            }
+
+            if (!_fileSystem.FileExists(nuspecFilePath))
+            {
+                return null;
+            }
+
+            var id = Path.GetFileNameWithoutExtension(nuspecFilePath);
+            var fullVersionDir = Path.GetDirectoryName(nuspecFilePath);
+            var versionString = Path.GetFileName(fullVersionDir);
+            if (versionString.Equals(id))
+            {
+                // old format of local package folders, we don't support it now, since WTE ships feed
+                // in new format already.
+                return null;
+            }
+
+            NuGetVersion version;
+            if (!NuGetVersion.TryParse(versionString, out version))
+            {
+                return null;
+            }
+
+            var nupkgFilePath = _fileSystem.DirectoryGetFiles(fullVersionDir, "*.nupkg", SearchOption.TopDirectoryOnly)
+                                           .FirstOrDefault();
+            return nupkgFilePath == null 
+                ? null 
+                : new LocalPackageInfo(id, version, fullVersionDir, nuspecFilePath, nupkgFilePath);
+        }
+
         /// <summary>
         /// Returns metadata info for given nupkg file. 
         /// Note: Don't hold any object referenecs for ZipPackage data, since it might hold whole package in the memory.
         /// </summary>
-        public IPackageMetadata GetPackageMetadataFromPath(string nupkgFilePath, Func<string, bool> shouldIncludeFunc)
+        public IPackageMetadata GetPackageMetadataFromPath(string nuspecFilePath, Func<string, bool> shouldIncludeFunc)
         {
-            if (string.IsNullOrEmpty(nupkgFilePath))
+            var package = GetPackageInfo(nuspecFilePath);
+            if (package == null)
             {
                 return null;
             }
-
-            if (!_fileSystem.FileExists(nupkgFilePath))
-            {
-                return null;
-            }
-
-            // Note: don't use ZipPackage ctor that takes Stream, it stores package contents in memory and they 
-            // are not collected after even though we are not referencing any of ZipPackage objects. Instead use 
-            // ZipPackage(filePath) ctor.
-            var package = _nugetHelper.OpenPackage(nupkgFilePath, (p) => { return new NuGet.ZipPackage(p); });
+            
+            var allAssemblies = _nugetHelper.GetPackageFiles(package)
+                                            .Where(x => !string.IsNullOrEmpty(x) && x.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                                            .ToList();
 
             // check if package id should be excluded and exit early
             if (shouldIncludeFunc != null && !shouldIncludeFunc(package.Id))
@@ -80,32 +112,19 @@ namespace Nuget.PackageIndex
                 return null;
             }
 
-            var packageFolder = Path.GetDirectoryName(nupkgFilePath) ?? string.Empty;
+            var packageTargetFrameworkNames = package.Nuspec.GetDependencyGroups()
+                                                            .Select(x => x.TargetFramework)
+                                                            .Distinct()
+                                                            .ToList();
+            var tfmAssemblyGroups = new Dictionary<NuGetFramework, IList<string>>();
 
-            // Note: If using this commented code to get package assemblies, it unpacks whole package into memory,
-            // and then it is never garbage collected even though we don't keep any references to it. It is also 
-            // should not be cached since ctor that we use sets _enableCaching = false for ZipPackage. So it might
-            // have some unmanaged objects that are not collected by some reason.
-            // var allAssemblies = package.GetFiles()
-            //                            .Where(x => ".dll".Equals(Path.GetExtension(x.EffectivePath), StringComparison.OrdinalIgnoreCase))
-            //                            .Select(x => x.Path.ToString())
-            //                            .ToList();
-
-            // we assume that nupkg file lives in the package dir and has lib, ref an dother package dirs in the same dir
-            var allAssemblies = _fileSystem.DirectoryGetFiles(packageFolder, "*.dll", SearchOption.AllDirectories)
-                                            .Select(x => x.Substring(packageFolder.Length + 1))
-                                            .ToList();
-
-            var packageTargetFrameworkNames = package.GetSupportedFrameworks().ToList() ?? Enumerable.Empty<FrameworkName>();
-            var tfmAssemblyGroups = new Dictionary<FrameworkName, IList<string>>();
-
-            // here we construct a list of the form { TFM }, { list of target assemblies } 
+            // here we construct a list of the form { TFM }, { list of target assemblies }
             foreach (var tfm in packageTargetFrameworkNames)
             {
-                var dnxResult = TfmPackageAssemblyMatcher.GetAssembliesForFramework(tfm, package, allAssemblies);
+                var dnxResult = GetAssembliesForFramework(package, tfm, allAssemblies);
                 if (dnxResult != null)
                 {
-                    tfmAssemblyGroups.Add(new FrameworkName(tfm.Identifier, tfm.Version, tfm.Profile), dnxResult.ToList());
+                    tfmAssemblyGroups.Add(tfm, dnxResult.ToList());
                 }
             }
 
@@ -118,46 +137,92 @@ namespace Nuget.PackageIndex
                     List<string> existingAssemblyTfms = null;
                     if (assembliesMetadata.TryGetValue(assemblyPath, out existingAssemblyTfms))
                     {
-                        existingAssemblyTfms.Add(DnxVersionUtility.GetShortFrameworkName(kvp.Key));
+                        existingAssemblyTfms.Add(kvp.Key.GetShortFolderName());
                     }
                     else
                     {
-                        assembliesMetadata.Add(assemblyPath, new List<string> { DnxVersionUtility.GetShortFrameworkName(kvp.Key) });
+                        assembliesMetadata.Add(assemblyPath, new List<string> { kvp.Key.GetShortFolderName() });
                     }
                 }
             }
 
-            var selectedAssemblies = new List<AssemblyMetadata>();
-            foreach (var am in assembliesMetadata)
-            {
-                var fullPath = Path.Combine(packageFolder, am.Key);
-
-                if (!_fileSystem.FileExists(fullPath))
-                {
-                    fullPath = Path.Combine(packageFolder, package.Id.ToString(), am.Key);
-                    if (!_fileSystem.FileExists(fullPath))
-                    {
-                        continue;
-                    }
-                }
-
-                selectedAssemblies.Add(new AssemblyMetadata
-                {
-                    FullPath = fullPath,
-                    TargetFrameworks = am.Value
-                });
-            }
+            var selectedAssemblies = assembliesMetadata.Where(x => x.Value.Any())
+                                                       .Select(x => new AssemblyMetadata
+                                                            {
+                                                                FullPath = x.Key,
+                                                                TargetFrameworks = x.Value,
+                                                                Package = package
+                                                            })
+                                                       .ToList();
 
             var newPackageMetadata = new PackageMetadata
             {
                 Id = package.Id.ToString(),
                 Version = package.Version.ToString(),
-                LocalPath = nupkgFilePath,
-                TargetFrameworks = packageTargetFrameworkNames.Select(x => DnxVersionUtility.GetShortFrameworkName(x)).ToList(),
+                LocalPath = nuspecFilePath,
+                TargetFrameworks = packageTargetFrameworkNames.Select(x => x.GetShortFolderName()).ToList(),
                 Assemblies = selectedAssemblies
             };
 
             return newPackageMetadata;
+        }
+
+        private IEnumerable<string> GetAssembliesForFramework(LocalPackageInfo package, NuGetFramework framework, IEnumerable<string> files)
+        {
+            var contentItems = new NuGet.ContentModel.ContentItemCollection();
+            HashSet<string> referenceFilter = null;
+
+            contentItems.Load(files);
+
+            // This will throw an appropriate error if the nuspec is missing
+            var nuspec = package.Nuspec;
+            IList<string> compileTimeAssemblies = null;
+            IList<string> runtimeAssemblies = null;
+
+            var referenceSet = nuspec.GetReferenceGroups().GetNearest(framework);
+            if (referenceSet != null)
+            {
+                referenceFilter = new HashSet<string>(referenceSet.Items, StringComparer.OrdinalIgnoreCase);
+            }
+
+            var conventions = new ManagedCodeConventions(null);            
+            var managedCriteria = conventions.Criteria.ForFramework(framework);
+            var compileGroup = contentItems.FindBestItemGroup(managedCriteria, conventions.Patterns.CompileAssemblies, conventions.Patterns.RuntimeAssemblies);
+
+            if (compileGroup != null)
+            {
+                compileTimeAssemblies = compileGroup.Items.Select(t => t.Path).ToList();
+            }
+
+            var runtimeGroup = contentItems.FindBestItemGroup(managedCriteria, conventions.Patterns.RuntimeAssemblies);
+            if (runtimeGroup != null)
+            {
+                runtimeAssemblies = runtimeGroup.Items.Select(p => p.Path).ToList();
+            }
+
+            // COMPAT: Support lib/contract so older packages can be consumed
+            var contractPath = "lib/contract/" + package.Id + ".dll";
+            var hasContract = files.Any(path => path == contractPath);
+            var hasLib = runtimeAssemblies?.Any();
+
+            if (hasContract
+                && hasLib.HasValue
+                && hasLib.Value
+                && !framework.IsDesktop())
+            {
+                compileTimeAssemblies.Clear();
+                compileTimeAssemblies.Add(contractPath);
+            }
+
+            // Apply filters from the <references> node in the nuspec
+            if (referenceFilter != null)
+            {
+                // Remove anything that starts with "lib/" and is NOT specified in the reference filter.
+                // runtimes/* is unaffected (it doesn't start with lib/)
+                compileTimeAssemblies = compileTimeAssemblies.Where(p => !p.StartsWith("lib/") || referenceFilter.Contains(Path.GetFileName(p))).ToList();
+            }
+
+            return compileTimeAssemblies ?? Enumerable.Empty<string>();
         }
 
         /// <summary>
@@ -179,7 +244,7 @@ namespace Nuget.PackageIndex
                     continue;
                 }
 
-                var nupkgFiles = _fileSystem.DirectoryGetFiles(source, "*.nupkg", SearchOption.AllDirectories);
+                var nupkgFiles = _fileSystem.DirectoryGetFiles(source, "*.nuspec", SearchOption.AllDirectories);
                 foreach (var nupkgFile in nupkgFiles)
                 {
                     if (cancellationToken != null && cancellationToken.IsCancellationRequested)
