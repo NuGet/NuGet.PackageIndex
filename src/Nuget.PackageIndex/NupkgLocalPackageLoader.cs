@@ -116,6 +116,24 @@ namespace Nuget.PackageIndex
                                                             .Select(x => x.TargetFramework)
                                                             .Distinct()
                                                             .ToList();
+            // just in case take also framework names from assemblies' folder names
+            foreach(var assemblyPath in allAssemblies)
+            {
+                if (!assemblyPath.StartsWith("lib/") && !assemblyPath.StartsWith("ref/"))
+                {
+                    continue;
+                }
+
+                var indexOfThSeparator = assemblyPath.IndexOf('/', 4);
+                var fxFolder = assemblyPath.Substring(4, indexOfThSeparator - 4);
+
+                var nugetFx = NuGetFramework.Parse(fxFolder);
+                if (nugetFx != null && !packageTargetFrameworkNames.Any(x => x.Equals(nugetFx)))
+                {
+                    packageTargetFrameworkNames.Add(nugetFx);
+                }
+            }
+
             var tfmAssemblyGroups = new Dictionary<NuGetFramework, IList<string>>();
 
             // here we construct a list of the form { TFM }, { list of target assemblies }
