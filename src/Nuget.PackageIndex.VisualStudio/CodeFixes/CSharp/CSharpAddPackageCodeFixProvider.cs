@@ -51,11 +51,22 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
         [Import]
         private IAddPackageAnalyzerFactory AnalyzerFactory { get; set; }
 
+        [Import(LocalNugetPackageIndex.RoslynHandshakeContract, AllowDefault = true)]
+        private object RoslynIndex { get; set; }
+
         [ImportingConstructor]
         public CSharpAddPackageCodeFixProvider([Import]SVsServiceProvider serviceProvider)
             : base(new PackageInstaller(serviceProvider), ProjectMetadataProvider.Instance)
         {
             _serviceProvider = serviceProvider;
+        }
+
+        protected override bool Enabled
+        {
+            get
+            {
+                return RoslynIndex == null;
+            }
         }
 
         protected override IAddPackageAnalyzer Analyzer
@@ -117,7 +128,7 @@ namespace Nuget.PackageIndex.VisualStudio.CodeFixes.CSharp
         }
 
         /// <summary>
-        /// For now keep simple check if using directove can be added. Later we might add some checks here,
+        /// For now keep simple check if using directive can be added. Later we might add some checks here,
         /// for example if package source is unavailable etc 
         /// </summary>
         protected override bool CanAddImport(SyntaxNode node, CancellationToken cancellationToken)

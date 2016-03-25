@@ -15,6 +15,7 @@ namespace Nuget.PackageIndex.VisualStudio
     /// </summary>
     public sealed class LocalNugetPackageIndex : ILocalNugetPackageIndex
     {
+        public const string RoslynHandshakeContract = "RoslynNuGetSuggestions";
         private static LocalNugetPackageIndex _instance;
         public static LocalNugetPackageIndex Instance
         {

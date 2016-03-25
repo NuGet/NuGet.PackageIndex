@@ -50,6 +50,11 @@ namespace Nuget.PackageIndex.Client.CodeFixes
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
+            if (!Enabled)
+            {
+                return;
+            }
+
             var document = context.Document;
 
             var projects = _projectMetadataProvider.GetProjects(document.FilePath);
@@ -110,6 +115,17 @@ namespace Nuget.PackageIndex.Client.CodeFixes
 
                     context.RegisterCodeFix(action, diagnostic);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Allows actual implementation to be disabled by some outside setting.
+        /// </summary>
+        protected virtual bool Enabled
+        {
+            get
+            {
+                return true;
             }
         }
 
