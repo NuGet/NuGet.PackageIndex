@@ -4,11 +4,15 @@
     <SolutionRootDir>$(MSBuildProjectDirectory)\..</SolutionRootDir>    
     <ArtifactsDir>$(MSBuildThisFileDirectory)..\artifacts</ArtifactsDir>
     <ArtifactsSignedDir>$(MSBuildThisFileDirectory)..\artifacts\signed</ArtifactsSignedDir>
+    <ArtifactsMergedDir>$(MSBuildThisFileDirectory)..\artifacts\merged</ArtifactsMergedDir>
+    <ArtifactsMergeBinDir>$(MSBuildThisFileDirectory)..\artifacts\mergebin</ArtifactsMergeBinDir>
+    <ReferencesDir>$(MSBuildThisFileDirectory)..\references</ReferencesDir>
+    <PackagesDir>$(MSBuildThisFileDirectory)..\packages</PackagesDir>
     <SrcDir>$(MSBuildThisFileDirectory)..\src</SrcDir>
     <TestsDir>$(MSBuildThisFileDirectory)..\tests</TestsDir>   
   </PropertyGroup>
 
-  <Target Name="Go" DependsOnTargets="Clean;Build;RunTests" />
+  <Target Name="Go" DependsOnTargets="Clean;Build;RunTests;Merge" />
   <Target Name="Clean">
     <RemoveDir Directories="$(ArtifactsDir)" />
   </Target>
@@ -27,5 +31,34 @@
   <Target Name="RunTests">
 
 
+  </Target>
+
+  <Target Name="Merge">
+    <MakeDir Directories="$(ArtifactsMergedDir)" />
+    <MakeDir Directories="$(ArtifactsMergeBinDir)" />
+
+    <ItemGroup>
+      <MergeDependencies Include="$(ReferencesDir)\*.dll" />
+      <MergeDependencies Include="$(PackagesDir)\Lucene.Net.3.0.3\lib\NET40\Lucene.Net.dll" />
+      <MergeDependencies Include="$(PackagesDir)\SharpZipLib.0.86.0\lib\20\ICSharpCode.SharpZipLib.dll" />
+      <MergeDependencies Include="$(PackagesDir)\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll" />
+      <MergeDependencies Include="$(ArtifactsSignedDir)\Nuget.PackageIndex.dll" />      
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(MergeDependencies)" DestinationFolder="$(ArtifactsMergeBinDir)" OverwriteReadOnlyFiles="true" />
+
+    <ItemGroup>
+      <AssembliesToMerge Include="$(ReferencesDir)\NuGet*.dll" />
+      <AssembliesToMerge Include="$(PackagesDir)\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <ILMerge>$(PackagesDir)\ILMerge.2.14.1208\tools\ILMerge.exe /t:library /keyfile:$(MSBuildThisFileDirectory)..\FinalPublicKey.snk /delaysign /out:$(ArtifactsMergedDir)\Nuget.PackageIndex.dll</ILMerge>
+      <ILMerge>$(IlMerge) $(ArtifactsSignedDir)\Nuget.PackageIndex.dll @(AssembliesToMerge -> '%(Identity)', ' ')</ILMerge>
+    </PropertyGroup>
+    
+    <Exec Command="$(ILMerge)" WorkingDirectory="$(ArtifactsMergeBinDir)" />
+
+    <Copy SourceFiles="$(ArtifactsSignedDir)\Nuget.PackageIndex.VisualStudio.dll" DestinationFolder="$(ArtifactsMergedDir)" OverwriteReadOnlyFiles="true" />    
   </Target>
 </Project>
