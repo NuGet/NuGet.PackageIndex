@@ -49,7 +49,6 @@
 
     <ItemGroup>
       <AssembliesToMerge Include="$(ReferencesDir)\NuGet*.dll" />
-      <AssembliesToMerge Include="$(PackagesDir)\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll" />
     </ItemGroup>
 
     <PropertyGroup>
