@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Nuget.PackageIndex.Abstractions
@@ -11,7 +12,7 @@ namespace Nuget.PackageIndex.Abstractions
         bool FileExists(string fullPath);
         Stream FileOpenRead(string fullPath);
         bool DirectoryExists(string fullPath);
-        string[] DirectoryGetFiles(string path, string searchPattern, SearchOption searchOption);
+        IEnumerable<string> DirectoryGetFiles(string path, string searchPattern, SearchOption searchOption);
         DateTime FileGetLastWriteTime(string fullPath);
         string FileReadAllText(string fullPath);
         void FileWriteAllText(string fullPath, string content);

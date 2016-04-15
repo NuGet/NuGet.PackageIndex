@@ -18,6 +18,18 @@ namespace Nuget.PackageIndex
         public string LocalPath { get; set; }
         public IEnumerable<AssemblyMetadata> Assemblies { get; set; }
 
+        private ILocalPackageLoader PackageLoader { get; set; }
+
+        public PackageMetadata(ILocalPackageLoader packageLoader)
+        {
+            PackageLoader = packageLoader;
+        }
+
+        public void Load()
+        {
+            PackageLoader.LoadPackage(this);
+        }
+
         public bool Equals(IPackageMetadata other)
         {
             return Id.Equals(other.Id)

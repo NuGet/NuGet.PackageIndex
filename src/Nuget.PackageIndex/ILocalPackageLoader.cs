@@ -18,6 +18,7 @@ namespace Nuget.PackageIndex
                                                       DateTime lastIndexModifiedTime, 
                                                       CancellationToken cancellationToken,
                                                       Func<string, bool> shouldIncludeFunc);
+        void LoadPackage(IPackageMetadata packageMetadata);
         IPackageMetadata GetPackageMetadataFromPath(string packagePath, Func<string, bool> shouldIncludeFunc);
     }
 }

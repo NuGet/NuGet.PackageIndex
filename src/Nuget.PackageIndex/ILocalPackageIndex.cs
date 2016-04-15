@@ -25,5 +25,7 @@ namespace Nuget.PackageIndex
         IList<NamespaceInfo> GetNamespaces();
         IList<ExtensionInfo> GetExtensions();
         IList<PackageIndexError> Clean();
+        void WarmUp();
+        void CoolDown();
     }
 }

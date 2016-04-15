@@ -53,26 +53,26 @@ namespace Nuget.PackageIndex.VisualStudio
 
             var shouldClean = false;
 
-            // if at least one directory where packages live does not exist, 
-            // we need to clean index and rebuild it from scratch. It would be 
-            // much faster than go package by package.
-            var packageDirs = _indexBuilder.GetPackageDirectories();
-            foreach(var packageDir in packageDirs)
-            {
-                if (!Directory.Exists(packageDir))
-                {
-                    shouldClean = true;
-                    try
-                    {
-                        // create directory to avoid cleaning at next VS startup
-                        Directory.CreateDirectory(packageDir);
-                    }
-                    catch(Exception e)
-                    {
-                        Debug.Write(e.ToString());
-                    }
-                }
-            }
+            //// if at least one directory where packages live does not exist, 
+            //// we need to clean index and rebuild it from scratch. It would be 
+            //// much faster than go package by package.
+            //var packageDirs = _indexBuilder.GetPackageDirectories();
+            //foreach(var packageDir in packageDirs)
+            //{
+            //    if (!Directory.Exists(packageDir))
+            //    {
+            //        shouldClean = true;
+            //        try
+            //        {
+            //            // create directory to avoid cleaning at next VS startup
+            //            Directory.CreateDirectory(packageDir);
+            //        }
+            //        catch(Exception e)
+            //        {
+            //            Debug.Write(e.ToString());
+            //        }
+            //    }
+            //}
 
             // In addition to package sources we should also check WTE version,
             // since when there is new WTE installed, we have new set of default 

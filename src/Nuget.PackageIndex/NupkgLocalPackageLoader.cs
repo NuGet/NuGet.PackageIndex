@@ -55,41 +55,6 @@ namespace Nuget.PackageIndex
             }
         }
 
-        private LocalPackageInfo GetPackageInfo(string nuspecFilePath)
-        {
-            if (string.IsNullOrEmpty(nuspecFilePath))
-            {
-                return null;
-            }
-
-            if (!_fileSystem.FileExists(nuspecFilePath))
-            {
-                return null;
-            }
-
-            var id = Path.GetFileNameWithoutExtension(nuspecFilePath);
-            var fullVersionDir = Path.GetDirectoryName(nuspecFilePath);
-            var versionString = Path.GetFileName(fullVersionDir);
-            if (versionString.Equals(id))
-            {
-                // old format of local package folders, we don't support it now, since WTE ships feed
-                // in new format already.
-                return null;
-            }
-
-            NuGetVersion version;
-            if (!NuGetVersion.TryParse(versionString, out version))
-            {
-                return null;
-            }
-
-            var nupkgFilePath = _fileSystem.DirectoryGetFiles(fullVersionDir, "*.nupkg", SearchOption.TopDirectoryOnly)
-                                           .FirstOrDefault();
-            return nupkgFilePath == null 
-                ? null 
-                : new LocalPackageInfo(id, version, fullVersionDir, nuspecFilePath, nupkgFilePath);
-        }
-
         /// <summary>
         /// Returns metadata info for given nupkg file. 
         /// Note: Don't hold any object referenecs for ZipPackage data, since it might hold whole package in the memory.
@@ -101,10 +66,6 @@ namespace Nuget.PackageIndex
             {
                 return null;
             }
-            
-            var allAssemblies = _nugetHelper.GetPackageFiles(package)
-                                            .Where(x => !string.IsNullOrEmpty(x) && x.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                                            .ToList();
 
             // check if package id should be excluded and exit early
             if (shouldIncludeFunc != null && !shouldIncludeFunc(package.Id))
@@ -112,12 +73,35 @@ namespace Nuget.PackageIndex
                 return null;
             }
 
+            var newPackageMetadata = new PackageMetadata(this)
+            {
+                Id = package.Id.ToString(),
+                Version = package.Version.ToString(),
+                LocalPath = package.ManifestPath
+            };
+
+            return newPackageMetadata;
+        }
+
+        public void LoadPackage(IPackageMetadata packageMetadata)
+        {
+            var package = GetPackageInfo(packageMetadata.LocalPath);
+            if (package == null)
+            {
+                return;
+            }
+
+            var allAssemblies = _nugetHelper.GetPackageFiles(package)
+                                             .Where(x => !string.IsNullOrEmpty(x) && x.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                                             .ToList();
+
+
             var packageTargetFrameworkNames = package.Nuspec.GetDependencyGroups()
                                                             .Select(x => x.TargetFramework)
                                                             .Distinct()
                                                             .ToList();
             // just in case take also framework names from assemblies' folder names
-            foreach(var assemblyPath in allAssemblies)
+            foreach (var assemblyPath in allAssemblies)
             {
                 if (!assemblyPath.StartsWith("lib/") && !assemblyPath.StartsWith("ref/"))
                 {
@@ -166,23 +150,50 @@ namespace Nuget.PackageIndex
 
             var selectedAssemblies = assembliesMetadata.Where(x => x.Value.Any())
                                                        .Select(x => new AssemblyMetadata
-                                                            {
-                                                                FullPath = x.Key,
-                                                                TargetFrameworks = x.Value,
-                                                                Package = package
-                                                            })
+                                                       {
+                                                           FullPath = x.Key,
+                                                           TargetFrameworks = x.Value,
+                                                           Package = package
+                                                       })
                                                        .ToList();
 
-            var newPackageMetadata = new PackageMetadata
-            {
-                Id = package.Id.ToString(),
-                Version = package.Version.ToString(),
-                LocalPath = nuspecFilePath,
-                TargetFrameworks = packageTargetFrameworkNames.Select(x => x.GetShortFolderName()).ToList(),
-                Assemblies = selectedAssemblies
-            };
+            packageMetadata.TargetFrameworks = packageTargetFrameworkNames.Select(x => x.GetShortFolderName()).ToList();
+            packageMetadata.Assemblies = selectedAssemblies;
+        }
 
-            return newPackageMetadata;
+        private LocalPackageInfo GetPackageInfo(string nuspecFilePath)
+        {
+            if (string.IsNullOrEmpty(nuspecFilePath))
+            {
+                return null;
+            }
+
+            if (!_fileSystem.FileExists(nuspecFilePath))
+            {
+                return null;
+            }
+
+            var id = Path.GetFileNameWithoutExtension(nuspecFilePath);
+            var fullVersionDir = Path.GetDirectoryName(nuspecFilePath);
+            var versionString = Path.GetFileName(fullVersionDir);
+            if (versionString.Equals(id))
+            {
+                // old format of local package folders, we don't support it now, since WTE ships feed
+                // in new format already.
+                return null;
+            }
+
+            NuGetVersion version;
+            if (!NuGetVersion.TryParse(versionString, out version))
+            {
+                return null;
+            }
+
+            var nupkgFilePath = _fileSystem.DirectoryGetFiles(fullVersionDir, "*.nupkg", SearchOption.TopDirectoryOnly)
+                                           .FirstOrDefault();
+            return nupkgFilePath == null
+                ? null
+                : new LocalPackageInfo(id, version, fullVersionDir, nuspecFilePath, nupkgFilePath);
         }
 
         private IEnumerable<string> GetAssembliesForFramework(LocalPackageInfo package, NuGetFramework framework, IEnumerable<string> files)

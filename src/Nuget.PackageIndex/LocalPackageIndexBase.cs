@@ -113,6 +113,39 @@ namespace Nuget.PackageIndex
             }
         }
 
+        private bool _isWarm = false;
+        private object _packageCacheLock = new object();
+        private PackageMemoryCache _packageCache;
+        private PackageMemoryCache PackageCache
+        {
+            get
+            {
+                lock (_packageCacheLock)
+                {
+                    if (_packageCache == null)
+                    {
+                        _packageCache = new PackageMemoryCache(GetPackages());
+                    }
+                }
+                
+                return _packageCache;
+            }
+        }
+
+        public void WarmUp()
+        {
+            _isWarm = true;
+        }
+
+        public void CoolDown()
+        {
+            lock (_packageCacheLock)
+            {
+                _isWarm = false;
+                _packageCache = null;
+            }
+        }
+
         public IList<PackageIndexError> AddPackage(IPackageMetadata package, bool force)
         {
             try
@@ -125,7 +158,7 @@ namespace Nuget.PackageIndex
                 // check if package exists in the index:
                 //  - if it does not, proceed and add it
                 //  - if it is, add to index only if new package has higher version
-                var existingPackage = GetPackages(package.Id).FirstOrDefault();
+                var existingPackage = PackageCache.GetPackage(package.Id);
                 if (existingPackage != null)
                 {
                     var existingPackageVersion = new NuGetVersion(existingPackage.Version);
@@ -146,6 +179,7 @@ namespace Nuget.PackageIndex
 
                 Logger.WriteInformation("Adding package {0} {1} to index.", package.Id, package.Version);
 
+                package.Load();
 
                 var reflector = ReflectorFactory.Create(package);
                 foreach (var assembly in package.Assemblies)
@@ -155,13 +189,14 @@ namespace Nuget.PackageIndex
                 }
 
                 Logger.WriteVerbose("Storing package model to the index.");
-                var result = Engine.AddEntry(
-                    new PackageModel
-                    {
-                        Name = package.Id,
-                        Version = package.Version.ToString(),
-                        Path = package.LocalPath
-                    });
+                var newPackage = new PackageModel
+                {
+                    Name = package.Id,
+                    Version = package.Version.ToString(),
+                    Path = package.LocalPath
+                };
+                var result = Engine.AddEntry(newPackage);
+                PackageCache.AddPackage(newPackage);
 
                 Logger.WriteVerbose("Storing type models to the index.");
                 result.AddRange(Engine.AddEntries(reflector.Types, false));
@@ -208,6 +243,11 @@ namespace Nuget.PackageIndex
             // remove package(s) from index
             var packages = GetPackagesInternal(packageName);
             errors.AddRange(Engine.RemoveEntries(packages, true)); // last one call optimize=true
+
+            if (_isWarm)
+            {
+                PackageCache.RemovePackage(packageName);
+            }
 
             Logger.WriteVerbose("Package removed, '{0}' errors occured.", packageName, errors.Count());
 
@@ -320,6 +360,48 @@ namespace Nuget.PackageIndex
             return Engine.Search(query, maxResults)
                          .Select(x => createModel(x))
                          .ToList();
+        }
+
+        private class PackageMemoryCache
+        {
+            private object _lock = new object();
+            private HashSet<PackageInfo> _packages;
+
+            public PackageMemoryCache(IList<PackageInfo> packages)
+            {
+                _packages = new HashSet<PackageInfo>(packages);
+            }
+
+            public PackageInfo GetPackage(string id)
+            {
+                lock (_lock)
+                {
+                    return _packages.FirstOrDefault(x => x.Name.Equals(id, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
+            public void AddPackage(PackageModel packageModel)
+            {
+                var package = new PackageInfo
+                {
+                    Name = packageModel.Name,
+                    Version = packageModel.Version,
+                    Path = packageModel.Path
+                };
+
+                lock (_lock)
+                {
+                    _packages.Add(package);
+                }
+            }
+
+            public void RemovePackage(string id)
+            {
+                lock (_lock)
+                {
+                    _packages.RemoveWhere(x => x.Name.Equals(StringComparison.OrdinalIgnoreCase));
+                }
+            }
         }
     }
 }

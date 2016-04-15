@@ -142,6 +142,9 @@ namespace Nuget.PackageIndex
                                                                 ShouldInclude);
 
                     _logger.WriteVerbose("Found packages to be added to the index.");
+
+                    _index.WarmUp();
+
                     int counter = 0;
                     foreach (var package in packages)
                     {
@@ -156,6 +159,8 @@ namespace Nuget.PackageIndex
                     }
 
                     _logger.WriteVerbose("Added {0} packages.", counter);
+
+                    _index.CoolDown();
                 }
                 catch(Exception e)
                 {
