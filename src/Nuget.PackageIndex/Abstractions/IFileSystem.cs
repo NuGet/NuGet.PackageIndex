@@ -13,6 +13,7 @@ namespace Nuget.PackageIndex.Abstractions
         Stream FileOpenRead(string fullPath);
         bool DirectoryExists(string fullPath);
         IEnumerable<string> DirectoryGetFiles(string path, string searchPattern, SearchOption searchOption);
+        IEnumerable<string> DirectoryGetFilesUpTo2Deep(string root, string pattern);
         DateTime FileGetLastWriteTime(string fullPath);
         string FileReadAllText(string fullPath);
         void FileWriteAllText(string fullPath, string content);

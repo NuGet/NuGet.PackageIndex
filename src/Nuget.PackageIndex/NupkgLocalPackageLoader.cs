@@ -273,7 +273,7 @@ namespace Nuget.PackageIndex
                     continue;
                 }
 
-                var nupkgFiles = _fileSystem.DirectoryGetFiles(source, "*.nuspec", SearchOption.AllDirectories);
+                var nupkgFiles = _fileSystem.DirectoryGetFilesUpTo2Deep(source, "*.nuspec");
                 foreach (var nupkgFile in nupkgFiles)
                 {
                     if (cancellationToken != null && cancellationToken.IsCancellationRequested)
