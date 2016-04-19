@@ -26,11 +26,11 @@ namespace Nuget.PackageIndex
         private const string PackageSourcesEnvironmentVariable = "NugetLocalPackageSources";
         private List<string> DefaultSources = new List<string>()
             {
-                @"%ProgramFiles(x86)%\Microsoft SDKs\NuGetPackages",
+                @"%ProgramFiles%\Microsoft SDKs\NuGetPackages",
                 @"%UserProfile%\.nuget\packages",
                 @"%UserProfile%\.dnx\packages",
-                @"%ProgramFiles(x86)%\Microsoft Web Tools\DNU",
-                @"%ProgramFiles(x86)%\Microsoft Web Tools\Packages"
+                @"%ProgramFiles%\Microsoft Web Tools\DNU",
+                @"%ProgramFiles%\Microsoft Web Tools\Packages"
             };
 
         private List<string> _packageSources;
@@ -78,7 +78,15 @@ namespace Nuget.PackageIndex
 
         public IList<string> GetPackageDirectories()
         {
-            return DefaultSources.Select(x => Environment.ExpandEnvironmentVariables(x)).ToList();
+            return DefaultSources.Select(x =>
+            {
+                var source = x;
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    source = source.Replace("%ProgramFiles%", "%ProgramFiles(x86)%");
+                }
+                return Environment.ExpandEnvironmentVariables(source);
+            }).ToList();
         }
 
          public Task<LocalPackageIndexBuilderResult> BuildAsync(bool shouldClean = false, 
