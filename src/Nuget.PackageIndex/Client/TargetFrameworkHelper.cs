@@ -21,23 +21,28 @@ namespace Nuget.PackageIndex.Client
             return NuGetFramework.Parse(framework);
         }
 
-        private static bool AreCompatible(NuGetFramework projectFramework, NuGetFramework packageFramework)
+        public static bool AreCompatible(TargetFrameworkMetadata projectFramework, IEnumerable<string> packageFrameworks)
         {
-            var reducer = new FrameworkReducer();
-            var nearest = reducer.GetNearest(projectFramework, new[] { packageFramework });
-            return nearest != null;
+            var nugetPackageFrameworks = packageFrameworks.Select(x => ParseFrameworkName(x));
+            return AreCompatible(projectFramework, nugetPackageFrameworks);
         }
 
-        public static bool AreCompatible(string projectFramework, string packageFramework)
+        private static bool AreCompatible(TargetFrameworkMetadata projectFramework, IEnumerable<NuGetFramework> packageFrameworks)
         {
-            return AreCompatible(ParseFrameworkName(projectFramework), ParseFrameworkName(packageFramework));
-        }
-
-        public static bool AreCompatible(string projectFramework, IEnumerable<string> packageFramework)
-        {
-            var nugetPackageFrameworks = packageFramework.Select(x => ParseFrameworkName(x));
             var reducer = new FrameworkReducer();
-            var nearest = reducer.GetNearest(ParseFrameworkName(projectFramework), nugetPackageFrameworks);
+
+            var nearest = reducer.GetNearest(ParseFrameworkName(projectFramework.TargetFrameworkShortName), packageFrameworks);
+            if (nearest == null)
+            {
+                foreach (var import in projectFramework.Imports)
+                {
+                    nearest = reducer.GetNearest(ParseFrameworkName(import), packageFrameworks);
+                    if (nearest != null)
+                    {
+                        break;
+                    }
+                }
+            }
             return nearest != null;
         }
 
@@ -104,8 +109,7 @@ namespace Nuget.PackageIndex.Client
                 var packageFrameworkNames = typeInfo.TargetFrameworks.Select(x => ParseFrameworkName(x)).ToList();
                 foreach (var projectFramework in projectTargetFrameworks)
                 {
-                    var projectFrameworkName = ParseFrameworkName(projectFramework.TargetFrameworkShortName);                    
-                    if (packageFrameworkNames.Any(x => AreCompatible(projectFrameworkName, x)))
+                    if (packageFrameworkNames.Any(x => AreCompatible(projectFramework, new[] { x })))
                     {
                         // if at least any project target framework supports package - display it
                         return true;

@@ -8,6 +8,7 @@ namespace Nuget.PackageIndex.Client
     public class TargetFrameworkMetadata
     {
         public string TargetFrameworkShortName { get; set; }
+        public IEnumerable<string> Imports { get; set; }
         public Dictionary<string, string> Packages { get; set; }
     }
 }
